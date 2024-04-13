@@ -11,6 +11,7 @@ from components.chess import (
     generate_empty_board,
     generate_empty_player_pieces,
     place_pieces_randomly,
+    generate_pseudo_moves,
 )
 from config.assets import PIECES
 
@@ -22,8 +23,8 @@ class Game(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
 
-        self.squares = 40
-        self.board_size = (25, 8)
+        self.squares = 64
+        self.board_size = (8, 8)
         self.square_size = min(
             WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
         )
@@ -51,11 +52,19 @@ class Game(Scene):
         self.board = generate_empty_board(self.squares, *self.board_size)
         self.player_pieces = generate_empty_player_pieces(self.active_players)
         place_pieces_randomly(
-            self.board, self.player_pieces, Colour.RED, [Piece.KING, Piece.PAWN, Piece.PAWN, Piece.PAWN, Piece.KNIGHT]
+            self.board,
+            self.player_pieces,
+            Colour.RED,
+            [Piece.KING, Piece.PAWN, Piece.PAWN, Piece.PAWN, Piece.KNIGHT],
         )
         place_pieces_randomly(
-            self.board, self.player_pieces, Colour.BLUE, [Piece.KING, Piece.QUEEN, Piece.PAWN, Piece.ROOK, Piece.BISHOP]
+            self.board,
+            self.player_pieces,
+            Colour.BLUE,
+            [Piece.KING, Piece.QUEEN, Piece.PAWN, Piece.ROOK, Piece.BISHOP],
         )
+
+        print(generate_pseudo_moves(self.board, self.player_pieces, self.active_players[0]))
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -81,9 +90,10 @@ class Game(Scene):
             # There is a piece on the square
             if piece is not None:
                 for player_colour, piece_squares in self.player_pieces.items():
-                    # Piece belongs to this player
+                    # Skip if piece doesn't belong to this player
                     if square not in piece_squares:
                         continue
+
                     surface.blit(
                         self.player_piece_sprites[player_colour][piece.value],
                         position,
