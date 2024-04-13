@@ -26,4 +26,4 @@ class Board:
 
 
 def position_to_square(x: int, y: int) -> int:
-    return y * 8 + x
+    return (7-y) * 8 + x
