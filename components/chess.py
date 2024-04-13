@@ -142,7 +142,7 @@ def generate_piece_moves(
 ) -> list[Move]:
     match (piece):
         case Piece.PAWN:
-            return get_pawn_moves(board, player_pieces, player_colour, x, y, -1)
+            return get_pawn_moves(board, player_pieces, player_colour, x, y, 1)
 
         case Piece.KNIGHT:
             return get_set_moves(
@@ -194,19 +194,19 @@ def get_pawn_moves(
     new_y = y + direction
     # If square inside board and empty
     if (new_x, new_y) in board and board[(new_x, new_y)] is None:
-        moves.append((x, y, new_x, new_y, None))
+        moves.append(Move(x, y, new_x, new_y, None))
     # Captures
     new_x = x + 1
     if (new_x, new_y) in board:
         piece_colour = find_piece_colour(player_pieces, new_x, new_y)
-        if piece_colour != player_colour:
-            moves.append((x, y, new_x, new_y, piece_colour))
+        if piece_colour is not None and piece_colour != player_colour:
+            moves.append(Move(x, y, new_x, new_y, piece_colour))
 
     new_x = x - 1
     if (new_x, new_y) in board:
         piece_colour = find_piece_colour(player_pieces, new_x, new_y)
-        if piece_colour != player_colour:
-            moves.append((x, y, new_x, new_y, piece_colour))
+        if piece_colour is not None and piece_colour != player_colour:
+            moves.append(Move(x, y, new_x, new_y, piece_colour))
 
     return moves
 
@@ -239,7 +239,7 @@ def get_set_moves(
         else:
             piece_colour = find_piece_colour(player_pieces, new_x, new_y)
             if piece_colour != player_colour:
-                moves.append((x, y, new_x, new_y, piece_colour))
+                moves.append(Move(x, y, new_x, new_y, piece_colour))
 
     return moves
 
@@ -260,7 +260,7 @@ def get_sliding_moves(
 
         # Keep moving in direction until not on board or ontop of piece
         while (new_x, new_y) in board and board[(new_x, new_y)] is None:
-            moves.append((x, y, new_x, new_y, None))
+            moves.append(Move(x, y, new_x, new_y, None))
             new_x += direction[0]
             new_y += direction[1]
 
@@ -268,6 +268,31 @@ def get_sliding_moves(
         if (new_x, new_y) in board:
             piece_colour = find_piece_colour(player_pieces, new_x, new_y)
             if piece_colour != player_colour:
-                moves.append((x, y, new_x, new_y, piece_colour))
+                moves.append(Move(x, y, new_x, new_y, piece_colour))
 
     return moves
+
+
+def perform_move(
+    board: Board, player_pieces: PlayerPieces, player_colour: Colour, move: Move
+) -> None:
+    # Move the piece on the board
+    board[(move.target_x, move.target_y)] = board[(move.piece_x, move.piece_y)]
+    board[(move.piece_x, move.piece_y)] = None
+
+    # Update player_pieces for player that moved
+    player_pieces[player_colour].remove((move.piece_x, move.piece_y))
+    player_pieces[player_colour].add((move.target_x, move.target_y))
+
+    # Update remove opponents piece if there was a capture
+    if move.capture is not None:
+        player_pieces[move.capture].remove((move.target_x, move.target_y))
+
+
+def play_random_move(
+    board: Board, player_pieces: PlayerPieces, player_colour: Colour
+) -> None:
+    possible_moves = generate_pseudo_moves(board, player_pieces, player_colour)
+    if possible_moves:
+        selected_move = random.choice(possible_moves)
+        perform_move(board, player_pieces, player_colour, selected_move)

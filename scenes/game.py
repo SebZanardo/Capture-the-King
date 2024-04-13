@@ -11,7 +11,7 @@ from components.chess import (
     generate_empty_board,
     generate_empty_player_pieces,
     place_pieces_randomly,
-    generate_pseudo_moves,
+    play_random_move,
 )
 from config.assets import PIECES
 
@@ -23,8 +23,8 @@ class Game(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
 
-        self.squares = 64
-        self.board_size = (8, 8)
+        self.squares = 40
+        self.board_size = (25, 8)
         self.square_size = min(
             WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
         )
@@ -64,7 +64,9 @@ class Game(Scene):
             [Piece.KING, Piece.QUEEN, Piece.PAWN, Piece.ROOK, Piece.BISHOP],
         )
 
-        print(generate_pseudo_moves(self.board, self.player_pieces, self.active_players[0]))
+        self.turn = 0  # Index in self.active_players array
+        self.move_speed = 0.2
+        self.move_speed_timer = 0
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -75,7 +77,17 @@ class Game(Scene):
         self.clicked = mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
 
     def update(self, dt: float) -> None:
-        pass
+        self.move_speed_timer -= dt
+        if self.move_speed_timer < 0:
+            player = self.active_players[self.turn]
+
+            # HACK: Move a piece if a player still has pieces on the board
+            if self.player_pieces[player]:
+                play_random_move(self.board, self.player_pieces, player)
+
+            self.turn += 1
+            self.turn %= len(self.active_players)
+            self.move_speed_timer = self.move_speed
 
     def render(self, surface: pygame.Surface) -> None:
         surface.fill(BACKGROUND)
