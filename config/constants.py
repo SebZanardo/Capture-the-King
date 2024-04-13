@@ -13,4 +13,4 @@ MAGENTA = pygame.Color(255, 0, 255)
 
 BACKGROUND = pygame.Color(50, 50, 50)
 LIGHT_SQUARE = pygame.Color(230, 232, 196)
-DARK_SQUARE = pygame.Color(99, 132, 62)
+DARK_SQUARE = pygame.Color(146, 99, 65)

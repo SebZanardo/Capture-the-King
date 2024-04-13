@@ -13,12 +13,14 @@ import random
 
 
 class Colour(Enum):
-    WHITE = auto()
+    WHITE = 0
     BLACK = auto()
+    RED = auto()
+    BLUE = auto()
 
 
 class Piece(Enum):
-    PAWN = auto()
+    PAWN = 0
     KNIGHT = auto()
     BISHOP = auto()
     ROOK = auto()
@@ -36,10 +38,10 @@ class Move:
 
 
 Board = dict[tuple[int, int], Optional[Piece]]
-Pieces = dict[Colour, set[tuple[int, int]]]
+PlayerPieces = dict[Colour, set[tuple[int, int]]]
 
 
-def generate_board(squares: int, width: int, height: int) -> Board:
+def generate_empty_board(squares: int, width: int, height: int) -> Board:
     start = (width // 2, height // 2)
 
     board = {}
@@ -80,3 +82,26 @@ def generate_board(squares: int, width: int, height: int) -> Board:
         print("Too many squares to fit within bounds!")
 
     return board
+
+
+def generate_empty_player_pieces(players: list[Colour]) -> PlayerPieces:
+    return {colour: set() for colour in players}
+
+
+def place_pieces_randomly(
+    board: Board, playerpieces: PlayerPieces, colour: Colour, pieces: list[Piece]
+) -> None:
+    open_squares = []
+    for square, piece in board.items():
+        if piece is None:
+            open_squares.append(square)
+
+    random.shuffle(open_squares)
+
+    for piece in pieces:
+        if not open_squares:
+            print("Not enough open squares to place pieces!")
+            break
+        square = open_squares.pop()
+        board[square] = piece
+        playerpieces[colour].add(square)
