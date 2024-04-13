@@ -59,9 +59,9 @@ def generate_board(squares: int, width: int, height: int) -> Board:
             # Outside of board bounds
             if (
                 adjacent[0] < 0
-                or adjacent[0] > width
+                or adjacent[0] >= width
                 or adjacent[1] < 0
-                or adjacent[1] > height
+                or adjacent[1] >= height
             ):
                 continue
 

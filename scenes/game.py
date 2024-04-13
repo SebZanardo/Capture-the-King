@@ -3,7 +3,7 @@ import pygame
 from utilities.typehints import ActionBuffer, MouseBuffer
 from config.input import InputState, MouseButton, Action
 from baseclasses.scenemanager import Scene, SceneManager
-from config.settings import WINDOW_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT
+from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT
 from config.constants import BACKGROUND, LIGHT_SQUARE, DARK_SQUARE
 from components.chess import generate_board
 
@@ -14,10 +14,12 @@ import scenes.mainmenu
 class Game(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
-        self.board_size = (8, 8)
+        self.board_size = (15, 5)
         self.tiles = 50
 
-        self.square_size = min(WINDOW_SIZE) // max(self.board_size)
+        self.square_size = min(
+            WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
+        )
         self.board_offset = (
             (WINDOW_WIDTH - self.square_size * self.board_size[0]) // 2,
             (WINDOW_HEIGHT - self.square_size * self.board_size[1]) // 2,
