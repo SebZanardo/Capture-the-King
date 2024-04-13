@@ -47,7 +47,10 @@ def generate_board(squares: int, width: int, height: int) -> Board:
     seen = set()
     seen.add(start)
 
-    for i in range(squares):
+    iterations = 0
+    while open_squares:
+        if iterations == squares:
+            break
         # Pick random open square
         square = open_squares.pop(random.randint(0, len(open_squares) - 1))
         board[square] = None
@@ -70,5 +73,10 @@ def generate_board(squares: int, width: int, height: int) -> Board:
                 open_squares.append(adjacent)
 
             seen.add(adjacent)
+
+        iterations += 1
+
+    if iterations != squares:
+        print("Too many squares to fit within bounds!")
 
     return board

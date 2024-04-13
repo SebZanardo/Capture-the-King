@@ -6,7 +6,6 @@ from baseclasses.scenemanager import Scene, SceneManager
 from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT
 from config.constants import BACKGROUND, LIGHT_SQUARE, DARK_SQUARE
 from components.chess import generate_board
-
 # Import the whole module of all scenes you want to switch to
 import scenes.mainmenu
 
@@ -14,8 +13,9 @@ import scenes.mainmenu
 class Game(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
-        self.board_size = (15, 5)
-        self.tiles = 50
+
+        self.tiles = 65
+        self.board_size = (8, 8)
 
         self.square_size = min(
             WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
