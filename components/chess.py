@@ -320,6 +320,30 @@ def find_captures(moves: list[Move]) -> list[Move]:
             captures.append(move)
     return captures
 
+def is_attack(
+    board: Board, player_pieces: PlayerPieces, player_colour: Colour, move: Move
+) -> Optional[list[Move]]:
+    """Returns: The capturing move(s) the attack threatens."""
+
+    target_piece = play_move(board, player_pieces, player_colour, move)
+    pseudo_moves = generate_pseudo_moves(board, player_pieces, player_colour)
+    threatening_captures = None
+    for pseudo_move in pseudo_moves:
+        # If there is a valid capture on the next move, then this move is an attack.
+        if pseudo_move.capture:
+            threatening_captures = pseudo_move
+            break
+    undo_move(board, player_pieces, player_colour, move, target_piece)
+
+    return threatening_captures
+
+def find_attacks(board: Board, player_pieces: PlayerPieces, player_colour: Colour, moves: list[Move]) -> list[Move]:
+    attacks = []
+    for move in moves:
+        if is_attack(board, player_pieces, player_colour, move):
+            attacks.append(move)
+    return attacks
+
 
 def pick_random_move(
     board: Board, player_pieces: PlayerPieces, player_colour: Colour
@@ -328,11 +352,14 @@ def pick_random_move(
     possible_moves = pseudo_moves
     # possible_moves = find_legal_moves(board, player_pieces, player_colour, pseudo_moves)
 
-    # Prioritise captures over regular moves
     captures = find_captures(possible_moves)
 
+    # Prioritise captures, then attacks, then regular moves
     if captures:
+        # Todo: Prioritise capturing higher value pieces.
         return random.choice(captures)
+    elif attacks := find_attacks(board, player_pieces, player_colour, possible_moves):
+        return random.choice(attacks)
     elif possible_moves:
         return random.choice(possible_moves)
     else:
