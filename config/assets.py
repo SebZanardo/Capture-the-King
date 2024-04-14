@@ -24,6 +24,7 @@ pygame.display.set_caption(CAPTION)
 
 # Load all sprite files (Ideally .png/.webp or .jpg for browser compatibility)
 IMPOSSIBLE_SPIN_FRAMES = slice_sheet("assets/impossible_spin.png", 64, 64)
+CHESS_PIECES = slice_sheet("assets/pieces_coloured.png", 150, 150)
 
 # Load all audio files (Must be .ogg file for browser compatibility)
 pass
