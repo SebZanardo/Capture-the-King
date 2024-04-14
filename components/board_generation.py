@@ -3,6 +3,9 @@ import random
 from components.chess import Colour, Piece, Board, PlayerPieces
 
 
+# random.seed(0)  # HACK: For debugging
+
+
 def generate_empty_board(squares: int, width: int, height: int) -> Board:
     start = (width // 2, height // 2)
 
@@ -47,7 +50,7 @@ def generate_empty_board(squares: int, width: int, height: int) -> Board:
 
 
 def generate_empty_player_pieces(players: list[Colour]) -> PlayerPieces:
-    return {colour: set() for colour in players}
+    return {colour: [] for colour in players}
 
 
 def place_pieces_randomly(
@@ -69,4 +72,4 @@ def place_pieces_randomly(
             break
         square = open_squares.pop()
         board[square] = piece
-        player_pieces[player_colour].add(square)
+        player_pieces[player_colour].append(square)

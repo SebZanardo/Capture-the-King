@@ -37,7 +37,7 @@ class Move:
 
 
 Board = dict[tuple[int, int], Optional[Piece]]
-PlayerPieces = dict[Colour, set[tuple[int, int]]]
+PlayerPieces = dict[Colour, list[tuple[int, int]]]
 
 
 KNIGHT_MOVES = ((1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, -1), (-2, 1))
@@ -68,6 +68,67 @@ def generate_pseudo_moves(
         )
 
     return moves
+
+
+def find_legal_moves(
+    board: Board,
+    player_pieces: PlayerPieces,
+    player_colour: Colour,
+    pseudo_moves: list[Move],
+) -> list[Move]:
+    legal_moves = []
+
+    for move in pseudo_moves:
+        if is_legal(board, player_pieces, player_colour, move):
+            legal_moves.append(move)
+
+    return legal_moves
+
+
+def is_legal(
+    board: Board,
+    player_pieces: PlayerPieces,
+    player_colour: Colour,
+    move: Move,
+) -> bool:
+    legal = True
+
+    # Play move on board
+    target_piece = play_move(board, player_pieces, player_colour, move)
+    capture_index = perform_capture(player_pieces, move)
+
+    king_x, king_y = player_pieces[player_colour][0]
+
+    # Go through each piece belonging to opponents
+    for colour, piece_positions in player_pieces.items():
+        if colour == player_colour:
+            continue
+
+        for piece_position in piece_positions:
+            # Find if any of that piece's possible captures is our king
+            piece = board[piece_position]
+            moves = generate_piece_moves(
+                board, player_pieces, colour, piece, *piece_position
+            )
+            captures = find_captures(moves)
+
+            # If piece can capture king, player is in check and move is illegal
+            for capture in captures:
+                if capture.target_x == king_x and capture.target_y == king_y:
+                    legal = False
+                    break
+
+            if not legal:
+                break
+
+        if not legal:
+            break
+
+    # Unplay move on board
+    undo_move(board, player_pieces, player_colour, move, target_piece)
+    undo_capture(player_pieces, move, capture_index)
+
+    return legal
 
 
 def generate_piece_moves(
@@ -212,43 +273,63 @@ def get_sliding_moves(
     return moves
 
 
-def remove_piece(
+def play_move(
     board: Board, player_pieces: PlayerPieces, player_colour: Colour, move: Move
 ) -> Optional[Piece]:
-    piece = board[(move.piece_x, move.piece_y)]
-
+    target_piece = board[(move.target_x, move.target_y)]
+    board[(move.target_x, move.target_y)] = board[(move.piece_x, move.piece_y)]
     board[(move.piece_x, move.piece_y)] = None
-    player_pieces[player_colour].remove((move.piece_x, move.piece_y))
 
-    return piece
+    i = player_pieces[player_colour].index((move.piece_x, move.piece_y))
+    player_pieces[player_colour][i] = (move.target_x, move.target_y)
+
+    return target_piece
 
 
-def place_piece(
+def undo_move(
     board: Board,
     player_pieces: PlayerPieces,
     player_colour: Colour,
     move: Move,
-    piece: Piece,
+    target_piece: Optional[Piece],
 ) -> None:
-    board[(move.target_x, move.target_y)] = piece
-    player_pieces[player_colour].add((move.target_x, move.target_y))
+    board[(move.piece_x, move.piece_y)] = board[(move.target_x, move.target_y)]
+    board[(move.target_x, move.target_y)] = target_piece
+
+    i = player_pieces[player_colour].index((move.target_x, move.target_y))
+    player_pieces[player_colour][i] = (move.piece_x, move.piece_y)
 
 
-def perform_capture(player_pieces: PlayerPieces, move: Move) -> None:
+def perform_capture(player_pieces: PlayerPieces, move: Move) -> Optional[int]:
     if move.capture is not None:
-        player_pieces[move.capture].remove((move.target_x, move.target_y))
+        index = player_pieces[move.capture].index((move.target_x, move.target_y))
+        player_pieces[move.capture].pop(index)
+        return index
+
+
+def undo_capture(player_pieces: PlayerPieces, move: Move, index: Optional[int]) -> None:
+    # King will never be captured when player is alive so don't need to worry about order messing up then
+    if move.capture is not None:
+        player_pieces[move.capture].insert(index, (move.target_x, move.target_y))
+
+
+def find_captures(moves: list[Move]) -> list[Move]:
+    captures = []
+    for move in moves:
+        if move.capture:
+            captures.append(move)
+    return captures
 
 
 def pick_random_move(
     board: Board, player_pieces: PlayerPieces, player_colour: Colour
 ) -> Optional[Move]:
-    possible_moves = generate_pseudo_moves(board, player_pieces, player_colour)
+    pseudo_moves = generate_pseudo_moves(board, player_pieces, player_colour)
+    possible_moves = pseudo_moves
+    # possible_moves = find_legal_moves(board, player_pieces, player_colour, pseudo_moves)
 
     # Prioritise captures over regular moves
-    captures = []
-    for move in possible_moves:
-        if move.capture:
-            captures.append(move)
+    captures = find_captures(possible_moves)
 
     if captures:
         return random.choice(captures)

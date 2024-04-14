@@ -1,3 +1,4 @@
+from typing import Optional
 import pygame
 
 from utilities.typehints import ActionBuffer, MouseBuffer
@@ -11,8 +12,7 @@ from components.chess import (
     Move,
     Outcome,
     pick_random_move,
-    remove_piece,
-    place_piece,
+    play_move,
     perform_capture,
 )
 from components.board_generation import (
@@ -32,8 +32,8 @@ class Game(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
 
-        self.squares = 100
-        self.board_size = (15, 15)
+        self.squares = 64
+        self.board_size = (8, 8)
         self.square_size = min(
             WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
         )
@@ -62,17 +62,19 @@ class Game(Scene):
 
         self.board = generate_empty_board(self.squares, *self.board_size)
         self.player_pieces = generate_empty_player_pieces(self.active_players)
+
+        # NOTE: King must be first in array and only one king allowed (If check enabled)
         place_pieces_randomly(
             self.board,
             self.player_pieces,
             Colour.RED,
-            [Piece.KING, Piece.PAWN, Piece.PAWN, Piece.PAWN, Piece.KNIGHT],
+            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP],
         )
         place_pieces_randomly(
             self.board,
             self.player_pieces,
             Colour.BLUE,
-            [Piece.KING, Piece.QUEEN, Piece.PAWN, Piece.ROOK, Piece.BISHOP],
+            [Piece.KING, Piece.PAWN, Piece.PAWN, Piece.PAWN, Piece.KNIGHT],
         )
 
         self.turn = 0  # Index in self.active_players array
@@ -87,6 +89,7 @@ class Game(Scene):
 
         self.active_move: Move = None
         self.active_piece: Piece = None
+        self.active_captured_piece: Optional[Piece] = None
         self.active_piece_x = 0
         self.active_piece_y = 0
 
@@ -127,20 +130,8 @@ class Game(Scene):
 
         else:
             if self.active_move:
-                # Place piece that was moving
-                place_piece(
-                    self.board,
-                    self.player_pieces,
-                    self.active_player,
-                    self.active_move,
-                    self.active_piece,
-                )
-
-                # Perform capture if needed
-                captured = perform_capture(self.player_pieces, self.active_move)
-
                 # TODO: Play sound effect for move and capture
-                if captured:
+                if self.active_move.capture:
                     pass
                 else:
                     pass
@@ -155,10 +146,12 @@ class Game(Scene):
                 if self.active_players[0] not in still_alive:
                     self.gameover = True
                     self.outcome = Outcome.LOSE
+                    return
 
                 elif len(still_alive) == 1:
                     self.gameover = True
                     self.outcome = Outcome.WIN
+                    return
 
             # Update turn
             self.active_player = self.active_players[self.turn]
@@ -170,14 +163,17 @@ class Game(Scene):
                 if selected_move:
                     # Set piece to move
                     self.active_move = selected_move
+                    self.active_piece = self.board[
+                        (self.active_move.piece_x, self.active_move.piece_y)
+                    ]
 
-                    # Remove from board
-                    self.active_piece = remove_piece(
+                    self.active_captured_piece = play_move(
                         self.board,
                         self.player_pieces,
                         self.active_player,
                         self.active_move,
                     )
+                    perform_capture(self.player_pieces, self.active_move)
 
                     self.active_piece_x = self.active_move.piece_x
                     self.active_piece_y = self.active_move.piece_y
@@ -219,6 +215,13 @@ class Game(Scene):
                     if square not in piece_squares:
                         continue
 
+                    # Don't render piece that is moving or piece that is captured
+                    if self.active_move and square == (
+                        self.active_move.target_x,
+                        self.active_move.target_y,
+                    ):
+                        continue
+
                     if self.alive_players[player_colour]:
                         surface.blit(
                             self.player_piece_sprites[player_colour][piece.value],
@@ -230,6 +233,19 @@ class Game(Scene):
                             position,
                         )
                     break
+
+        # Render captured piece
+        if self.active_move and self.active_captured_piece:
+            screen_pos = (
+                self.active_move.target_x * self.square_size + self.board_offset[0],
+                self.active_move.target_y * self.square_size + self.board_offset[1],
+            )
+            surface.blit(
+                self.player_piece_sprites[self.active_move.capture][
+                    self.active_captured_piece.value
+                ],
+                screen_pos,
+            )
 
         # Render piece moving
         if self.active_move:
