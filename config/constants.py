@@ -13,13 +13,16 @@ BLUE = pygame.Color(0, 0, 255)
 MAGENTA = pygame.Color(255, 0, 255)
 
 BACKGROUND = pygame.Color(50, 50, 50)
-LIGHT_SQUARE = pygame.Color(230, 232, 196)
-DARK_SQUARE = pygame.Color(146, 99, 65)
+LIGHT_SQUARE = pygame.Color(200, 200, 200)
+DARK_SQUARE = pygame.Color(150, 150, 150)
 
 FACTION_COLOUR_MAP = {
     Colour.WHITE: WHITE,
     Colour.BLACK: BLACK,
-    Colour.RED: pygame.Color(255, 74, 74),
-    Colour.BLUE: pygame.Color(96, 182, 255),
     Colour.DEAD: pygame.Color(100, 100, 100),
+    Colour.RED: pygame.Color(216, 72, 72),
+    Colour.YELLOW: pygame.Color(215, 171, 68),
+    Colour.GREEN: pygame.Color(137, 217, 78),
+    Colour.BLUE: pygame.Color(75, 158, 217),
+    Colour.PURPLE: pygame.Color(184, 73, 216),
 }

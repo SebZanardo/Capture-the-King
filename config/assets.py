@@ -24,7 +24,9 @@ pygame.display.set_caption(CAPTION)
 
 # Load all sprite files (Ideally .png/.webp or .jpg for browser compatibility)
 IMPOSSIBLE_SPIN_FRAMES = slice_sheet("assets/impossible_spin.png", 64, 64)
-CHESS_PIECES = slice_sheet("assets/pieces_coloured.png", 150, 150)
+CHESS_PIECES = slice_sheet("assets/chess_pieces.png", 64, 96)
+SOUL_FLAMES = slice_sheet("assets/soul_flames.png", 64, 64)
+SOUL_FLAMES = [pygame.transform.scale(sprite, (128, 128)) for sprite in SOUL_FLAMES]
 
 # Load all audio files (Must be .ogg file for browser compatibility)
 pass

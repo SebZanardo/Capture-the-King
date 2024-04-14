@@ -1,12 +1,19 @@
 from typing import Optional
 import math
+import random
 import pygame
 
 from utilities.typehints import ActionBuffer, MouseBuffer
 from config.input import InputState, MouseButton, Action
 from baseclasses.scenemanager import Scene, SceneManager
 from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_SIZE
-from config.constants import BACKGROUND, LIGHT_SQUARE, DARK_SQUARE, FACTION_COLOUR_MAP
+from config.constants import (
+    BACKGROUND,
+    LIGHT_SQUARE,
+    DARK_SQUARE,
+    FACTION_COLOUR_MAP,
+    WHITE,
+)
 from components.chess import (
     Colour,
     Piece,
@@ -16,13 +23,14 @@ from components.chess import (
     play_move,
     perform_capture,
 )
-from components.board_generation import (
+from components.boardgeneration import (
     generate_empty_board,
     generate_empty_player_pieces,
     place_pieces_randomly,
 )
-
-from config.assets import CHESS_PIECES
+from components.animationplayer import AnimationPlayer
+from components.button import Button
+from config.assets import CHESS_PIECES, SOUL_FLAMES
 from utilities.math import lerp, clamp
 
 # Import the whole module of all scenes you want to switch to
@@ -37,28 +45,56 @@ class Game(Scene):
         self.transparent_surface = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
         self.transparent_surface.set_colorkey(self.transparent_colorkey)
 
-        self.squares = 40
-        self.board_size = (9, 8)
+        self.squares = 100
+        self.board_size = (15, 10)
         self.square_size = min(
-            WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
+            (WINDOW_WIDTH - 256) // self.board_size[0],
+            (WINDOW_HEIGHT - 64) // self.board_size[1],
         )
         self.square_size_tuple = (self.square_size, self.square_size)
 
-        self.scaled_pieces = [
-            pygame.transform.scale(sprite, self.square_size_tuple)
-            for sprite in CHESS_PIECES
+        self.piece_size = (self.square_size, self.square_size / 2 * 3)
+        scaled_pieces = [
+            pygame.transform.scale(sprite, self.piece_size) for sprite in CHESS_PIECES
         ]
+        self.piece_offset = (0, -self.piece_size[1] // 2)
 
-        self.active_players = [Colour.WHITE, Colour.RED, Colour.BLUE]
+        self.active_players = [Colour.WHITE, Colour.RED, Colour.YELLOW, Colour.BLACK]
         self.alive_players = {player: True for player in self.active_players}
 
         self.player_piece_sprites = {}
-        for colour in list(Colour):
+        piece_colours = [
+            Colour.DEAD,
+            Colour.WHITE,
+            Colour.BLACK,
+            Colour.RED,
+            Colour.YELLOW,
+            Colour.GREEN,
+            Colour.BLUE,
+            Colour.PURPLE,
+        ]
+        for i, colour in enumerate(piece_colours):
             coloured_pieces = [
-                self.scaled_pieces[colour.value * len(Piece) + i]
-                for i in range(len(Piece))
+                scaled_pieces[i * len(Piece) + j] for j in range(len(Piece))
             ]
             self.player_piece_sprites[colour] = coloured_pieces
+
+        self.flames = {}
+        self.flame_hitbox = {}
+        flame_colours = [
+            Colour.BLACK,
+            Colour.RED,
+            Colour.YELLOW,
+            Colour.GREEN,
+            Colour.BLUE,
+            Colour.PURPLE,
+        ]
+        for i, colour in enumerate(flame_colours):
+            anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 5], 0.2)
+            anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
+            anim.frame_index = random.randint(0, 4)
+            self.flames[colour] = anim
+            self.flame_hitbox[colour] = Button(0, 100 * i + 40, 128, 80)
 
         self.board_offset = (
             (WINDOW_WIDTH - self.square_size * self.board_size[0]) // 2,
@@ -79,7 +115,10 @@ class Game(Scene):
         divided_width = math.floor(self.board_size[0] / (len(self.active_players) - 1))
         for i in range(1, len(self.active_players)):
             extra = 0
-            if i == len(self.active_players) - 1 and self.board_size[0] % 2 != 0:
+            if (
+                i == len(self.active_players) - 1
+                and self.board_size[0] % 2 != (len(self.active_players) - 1) % 2
+            ):
                 extra = 1
 
             colour = self.active_players[i]
@@ -96,21 +135,32 @@ class Game(Scene):
             self.player_pieces,
             Colour.WHITE,
             self.player_regions,
-            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP],
+            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP] * 2,
         )
         place_pieces_randomly(
             self.board,
             self.player_pieces,
-            Colour.RED,
+            self.active_players[1],
             self.player_regions,
-            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP],
+            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP] * 2,
         )
         place_pieces_randomly(
             self.board,
             self.player_pieces,
-            Colour.BLUE,
+            self.active_players[2],
             self.player_regions,
-            [Piece.KING, Piece.PAWN, Piece.PAWN, Piece.PAWN, Piece.KNIGHT],
+            [Piece.KING, Piece.PAWN, Piece.ROOK, Piece.KNIGHT, Piece.BISHOP] * 2,
+        )
+        place_pieces_randomly(
+            self.board,
+            self.player_pieces,
+            self.active_players[3],
+            self.player_regions,
+            [Piece.KING, Piece.BISHOP, Piece.KNIGHT, Piece.KNIGHT, Piece.QUEEN] * 2,
+        )
+
+        self.start_button = Button(
+            WINDOW_WIDTH - 114, WINDOW_HEIGHT // 2 - 50, 100, 100
         )
 
         self.turn = 0  # Index in self.active_players array
@@ -135,6 +185,8 @@ class Game(Scene):
 
         self.run_simulation = False
 
+        self.hovered_flame_anim = None
+
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
     ) -> None:
@@ -144,7 +196,19 @@ class Game(Scene):
         self.clicked = mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
 
     def update(self, dt: float) -> None:
-        if self.clicked:
+        mouse_position = pygame.mouse.get_pos()
+
+        for hitbox, flame in zip(self.flame_hitbox.values(), self.flames.values()):
+            if hitbox.inside(*mouse_position):
+                if self.hovered_flame_anim != flame:
+                    if self.hovered_flame_anim is not None:
+                        self.hovered_flame_anim.switch_animation("idle")
+                    self.hovered_flame_anim = flame
+                    self.hovered_flame_anim.switch_animation("cast")
+
+            flame.update(dt)
+
+        if self.clicked and self.start_button.inside(*mouse_position):
             self.run_simulation = True
 
         if self.run_simulation:
@@ -179,21 +243,6 @@ class Game(Scene):
                         pass
 
                     self.active_move = None
-
-                    still_alive = []
-                    for player, alive in self.alive_players.items():
-                        if alive:
-                            still_alive.append(player)
-
-                    if self.active_players[0] not in still_alive:
-                        self.gameover = True
-                        self.outcome = Outcome.LOSE
-                        return
-
-                    elif len(still_alive) == 1:
-                        self.gameover = True
-                        self.outcome = Outcome.WIN
-                        return
 
                 # Update turn
                 self.active_player = self.active_players[self.turn]
@@ -241,6 +290,21 @@ class Game(Scene):
                 self.turn %= len(self.active_players)
                 self.move_speed_timer = self.move_speed
 
+                still_alive = []
+                for player, alive in self.alive_players.items():
+                    if alive:
+                        still_alive.append(player)
+
+                if self.active_players[0] not in still_alive:
+                    self.gameover = True
+                    self.outcome = Outcome.LOSE
+                    return
+
+                elif len(still_alive) == 1:
+                    self.gameover = True
+                    self.outcome = Outcome.WIN
+                    return
+
     def render(self, surface: pygame.Surface) -> None:
         self.transparent_surface.fill(self.transparent_colorkey)
         surface.fill(BACKGROUND)
@@ -252,25 +316,6 @@ class Game(Scene):
                 square[1] * self.square_size + self.board_offset[1],
             )
             pygame.draw.rect(surface, colour, (position, self.square_size_tuple))
-
-            # Render region if before match
-            if not self.run_simulation:
-                for colour, region in self.player_regions.items():
-                    if (
-                        square[0] < region[0]
-                        or square[0] >= region[0] + region[2]
-                        or square[1] < region[1]
-                        or square[1] >= region[1] + region[3]
-                    ):
-                        continue
-
-                    colour = FACTION_COLOUR_MAP[colour]
-                    colour.a = 120
-                    pygame.draw.rect(
-                        self.transparent_surface,
-                        colour,
-                        (position, self.square_size_tuple),
-                    )
 
             # There is a piece on the square
             if piece is not None:
@@ -286,23 +331,35 @@ class Game(Scene):
                     ):
                         continue
 
+                    piece_screen_pos = (
+                        square[0] * self.square_size
+                        + self.board_offset[0]
+                        + self.piece_offset[0],
+                        square[1] * self.square_size
+                        + self.board_offset[1]
+                        + self.piece_offset[1],
+                    )
                     if self.alive_players[player_colour]:
                         surface.blit(
                             self.player_piece_sprites[player_colour][piece.value],
-                            position,
+                            piece_screen_pos,
                         )
                     else:
                         surface.blit(
                             self.player_piece_sprites[Colour.DEAD][piece.value],
-                            position,
+                            piece_screen_pos,
                         )
                     break
 
         # Render captured piece
         if self.active_move and self.active_captured_piece:
             screen_pos = (
-                self.active_move.target_x * self.square_size + self.board_offset[0],
-                self.active_move.target_y * self.square_size + self.board_offset[1],
+                self.active_move.target_x * self.square_size
+                + self.board_offset[0]
+                + self.piece_offset[0],
+                self.active_move.target_y * self.square_size
+                + self.board_offset[1]
+                + self.piece_offset[1],
             )
             if self.alive_players[self.active_move.capture]:
                 surface.blit(
@@ -322,12 +379,35 @@ class Game(Scene):
         # Render piece moving
         if self.active_move:
             screen_pos = (
-                self.active_piece_x * self.square_size + self.board_offset[0],
-                self.active_piece_y * self.square_size + self.board_offset[1],
+                self.active_piece_x * self.square_size
+                + self.board_offset[0]
+                + self.piece_offset[0],
+                self.active_piece_y * self.square_size
+                + self.board_offset[1]
+                + self.piece_offset[1],
             )
             surface.blit(
                 self.player_piece_sprites[self.active_player][self.active_piece.value],
                 screen_pos,
             )
+
+        if not self.run_simulation:
+            for colour, region in self.player_regions.items():
+                screen_rect = (
+                    region[0] * self.square_size + self.board_offset[0],
+                    region[1] * self.square_size + self.board_offset[1],
+                    region[2] * self.square_size,
+                    region[3] * self.square_size,
+                )
+                colour = FACTION_COLOUR_MAP[colour]
+                colour.a = 120
+                pygame.draw.rect(
+                    self.transparent_surface,
+                    colour,
+                    screen_rect,
+                )
+            self.start_button.render(surface)
+            for i, flame in enumerate(self.flames.values()):
+                surface.blit(flame.get_frame(), (0, 100 * i))
 
         surface.blit(self.transparent_surface, (0, 0))
