@@ -9,6 +9,7 @@ class Colour(Enum):
     BLACK = auto()
     RED = auto()
     BLUE = auto()
+    DEAD = auto()  # Keep at end for grey pieces
 
 
 class Piece(Enum):
@@ -142,7 +143,8 @@ def generate_piece_moves(
 ) -> list[Move]:
     match (piece):
         case Piece.PAWN:
-            return get_pawn_moves(board, player_pieces, player_colour, x, y, 1)
+            d = -1 if player_colour == list(player_pieces.keys())[0] else 1
+            return get_pawn_moves(board, player_pieces, player_colour, x, y, d)
 
         case Piece.KNIGHT:
             return get_set_moves(
@@ -273,26 +275,38 @@ def get_sliding_moves(
     return moves
 
 
-def perform_move(
+def remove_piece(
     board: Board, player_pieces: PlayerPieces, player_colour: Colour, move: Move
-) -> None:
-    # Move the piece on the board
-    board[(move.target_x, move.target_y)] = board[(move.piece_x, move.piece_y)]
-    board[(move.piece_x, move.piece_y)] = None
+) -> Optional[Piece]:
+    piece = board[(move.piece_x, move.piece_y)]
 
-    # Update player_pieces for player that moved
+    board[(move.piece_x, move.piece_y)] = None
     player_pieces[player_colour].remove((move.piece_x, move.piece_y))
+
+    return piece
+
+
+def place_piece(
+    board: Board,
+    player_pieces: PlayerPieces,
+    player_colour: Colour,
+    move: Move,
+    piece: Piece,
+) -> None:
+    board[(move.target_x, move.target_y)] = piece
     player_pieces[player_colour].add((move.target_x, move.target_y))
 
-    # Update remove opponents piece if there was a capture
+
+def perform_capture(player_pieces: PlayerPieces, move: Move) -> None:
     if move.capture is not None:
         player_pieces[move.capture].remove((move.target_x, move.target_y))
 
 
-def play_random_move(
+def pick_random_move(
     board: Board, player_pieces: PlayerPieces, player_colour: Colour
-) -> None:
+) -> Optional[Move]:
     possible_moves = generate_pseudo_moves(board, player_pieces, player_colour)
     if possible_moves:
-        selected_move = random.choice(possible_moves)
-        perform_move(board, player_pieces, player_colour, selected_move)
+        return random.choice(possible_moves)
+    else:
+        return None
