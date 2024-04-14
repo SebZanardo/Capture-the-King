@@ -79,7 +79,7 @@ class Game(Scene):
         divided_width = math.floor(self.board_size[0] / (len(self.active_players) - 1))
         for i in range(1, len(self.active_players)):
             extra = 0
-            if i == len(self.active_players)-1 and self.board_size[0] % 2 != 0:
+            if i == len(self.active_players) - 1 and self.board_size[0] % 2 != 0:
                 extra = 1
 
             colour = self.active_players[i]
@@ -266,7 +266,11 @@ class Game(Scene):
 
                     colour = FACTION_COLOUR_MAP[colour]
                     colour.a = 120
-                    pygame.draw.rect(self.transparent_surface, colour, (position, self.square_size_tuple))
+                    pygame.draw.rect(
+                        self.transparent_surface,
+                        colour,
+                        (position, self.square_size_tuple),
+                    )
 
             # There is a piece on the square
             if piece is not None:
@@ -300,12 +304,20 @@ class Game(Scene):
                 self.active_move.target_x * self.square_size + self.board_offset[0],
                 self.active_move.target_y * self.square_size + self.board_offset[1],
             )
-            surface.blit(
-                self.player_piece_sprites[self.active_move.capture][
-                    self.active_captured_piece.value
-                ],
-                screen_pos,
-            )
+            if self.alive_players[self.active_move.capture]:
+                surface.blit(
+                    self.player_piece_sprites[self.active_move.capture][
+                        self.active_captured_piece.value
+                    ],
+                    screen_pos,
+                )
+            else:
+                surface.blit(
+                    self.player_piece_sprites[Colour.DEAD][
+                        self.active_captured_piece.value
+                    ],
+                    screen_pos,
+                )
 
         # Render piece moving
         if self.active_move:
