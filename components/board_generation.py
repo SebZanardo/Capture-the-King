@@ -57,12 +57,23 @@ def place_pieces_randomly(
     board: Board,
     player_pieces: PlayerPieces,
     player_colour: Colour,
+    player_regions: dict[Colour, tuple[int, int, int, int]],
     pieces: list[Piece],
 ) -> None:
+    region = player_regions[player_colour]
     open_squares = []
     for square, piece in board.items():
-        if piece is None:
-            open_squares.append(square)
+        if piece is not None:
+            continue
+        if (
+            square[0] < region[0]
+            or square[0] >= region[0] + region[2]
+            or square[1] < region[1]
+            or square[1] >= region[1] + region[3]
+        ):
+            continue
+
+        open_squares.append(square)
 
     random.shuffle(open_squares)
 
