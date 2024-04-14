@@ -9,16 +9,20 @@ from components.chess import (
     Colour,
     Piece,
     Move,
-    generate_empty_board,
-    generate_empty_player_pieces,
-    place_pieces_randomly,
+    Outcome,
     pick_random_move,
     remove_piece,
     place_piece,
     perform_capture,
 )
+from components.board_generation import (
+    generate_empty_board,
+    generate_empty_player_pieces,
+    place_pieces_randomly,
+)
+
 from config.assets import CHESS_PIECES
-from utilities.math import lerp
+from utilities.math import lerp, clamp
 
 # Import the whole module of all scenes you want to switch to
 import scenes.mainmenu
@@ -75,10 +79,11 @@ class Game(Scene):
         self.active_player = self.active_players[self.turn]
         self.moves = 0
         self.moves_since_death = 0
+        self.max_moves_since_death = 200
 
-        self.starting_move_speed = 0.2
-        self.move_speed = self.starting_move_speed
-        self.move_speed_timer = self.starting_move_speed
+        self.starting_speed = 0.2
+        self.move_speed = self.starting_speed
+        self.move_speed_timer = self.starting_speed
 
         self.active_move: Move = None
         self.active_piece: Piece = None
@@ -86,6 +91,8 @@ class Game(Scene):
         self.active_piece_y = 0
 
         self.gameover = False
+        self.outcome = Outcome.DRAW
+        self.finished = False
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -96,7 +103,10 @@ class Game(Scene):
         self.clicked = mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
 
     def update(self, dt: float) -> None:
-        if self.gameover:
+        if self.gameover or self.moves_since_death == self.max_moves_since_death:
+            if not self.finished:
+                print(self.outcome)
+            self.finished = True
             return
 
         self.move_speed_timer -= dt
@@ -137,9 +147,18 @@ class Game(Scene):
 
                 self.active_move = None
 
-                # HACK: Until I implement check, checkmate and stalemate
-                if not self.alive_players[self.active_players[0]]:
+                still_alive = []
+                for player, alive in self.alive_players.items():
+                    if alive:
+                        still_alive.append(player)
+
+                if self.active_players[0] not in still_alive:
                     self.gameover = True
+                    self.outcome = Outcome.LOSE
+
+                elif len(still_alive) == 1:
+                    self.gameover = True
+                    self.outcome = Outcome.WIN
 
             # Update turn
             self.active_player = self.active_players[self.turn]
@@ -165,15 +184,16 @@ class Game(Scene):
 
                     self.moves += 1
                     self.moves_since_death += 1
-                    self.move_speed = max(
-                        0, self.starting_move_speed * (1 - self.moves_since_death / 50)
+                    self.move_speed = self.starting_speed * (
+                        1 - self.moves_since_death / (self.max_moves_since_death / 4)
                     )
+                    self.move_speed = clamp(self.move_speed, 0, self.starting_speed)
                 else:
                     # TODO: Play sound effect player death
 
                     # Slow down game
                     self.moves_since_death = 0
-                    self.move_speed = self.starting_move_speed
+                    self.move_speed = self.starting_speed
                     self.move_speed_timer = self.move_speed
 
                     self.alive_players[self.active_player] = False
