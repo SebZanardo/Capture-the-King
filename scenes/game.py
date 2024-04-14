@@ -37,8 +37,8 @@ class Game(Scene):
         self.transparent_surface = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
         self.transparent_surface.set_colorkey(self.transparent_colorkey)
 
-        self.squares = 64
-        self.board_size = (8, 8)
+        self.squares = 40
+        self.board_size = (9, 8)
         self.square_size = min(
             WINDOW_WIDTH // self.board_size[0], WINDOW_HEIGHT // self.board_size[1]
         )
@@ -78,11 +78,15 @@ class Game(Scene):
         )
         divided_width = math.floor(self.board_size[0] / (len(self.active_players) - 1))
         for i in range(1, len(self.active_players)):
+            extra = 0
+            if i == len(self.active_players)-1 and self.board_size[0] % 2 != 0:
+                extra = 1
+
             colour = self.active_players[i]
             self.player_regions[colour] = (
                 divided_width * (i - 1),
                 0,
-                divided_width,
+                divided_width + extra,
                 math.floor(self.board_size[1] / 2),
             )
 
@@ -249,6 +253,21 @@ class Game(Scene):
             )
             pygame.draw.rect(surface, colour, (position, self.square_size_tuple))
 
+            # Render region if before match
+            if not self.run_simulation:
+                for colour, region in self.player_regions.items():
+                    if (
+                        square[0] < region[0]
+                        or square[0] >= region[0] + region[2]
+                        or square[1] < region[1]
+                        or square[1] >= region[1] + region[3]
+                    ):
+                        continue
+
+                    colour = FACTION_COLOUR_MAP[colour]
+                    colour.a = 120
+                    pygame.draw.rect(self.transparent_surface, colour, (position, self.square_size_tuple))
+
             # There is a piece on the square
             if piece is not None:
                 for player_colour, piece_squares in self.player_pieces.items():
@@ -298,17 +317,5 @@ class Game(Scene):
                 self.player_piece_sprites[self.active_player][self.active_piece.value],
                 screen_pos,
             )
-
-        if not self.run_simulation:
-            for colour, region in self.player_regions.items():
-                screen_rect = (
-                    region[0] * self.square_size + self.board_offset[0],
-                    region[1] * self.square_size + self.board_offset[1],
-                    region[2] * self.square_size,
-                    region[3] * self.square_size,
-                )
-                colour = FACTION_COLOUR_MAP[colour]
-                colour.a = 100
-                pygame.draw.rect(self.transparent_surface, colour, screen_rect)
 
         surface.blit(self.transparent_surface, (0, 0))
