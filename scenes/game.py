@@ -28,6 +28,7 @@ from components.boardgeneration import (
     generate_empty_board,
     generate_empty_player_pieces,
     place_pieces_randomly,
+    place_king_randomly,
 )
 from components.animationplayer import AnimationPlayer
 from components.button import Button, blit_centered_text
@@ -119,9 +120,12 @@ class Game(Scene):
             anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 5], 0.2)
             anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
             anim.frame_index = random.randint(0, 4)
-            hitbox = Button(0, 100 * i + 40, 128, 80)
+            hitbox = Button(
+                0, 100 * (i - 1) + 40, 128, 80
+            )  # Offset for removal of king summon
             flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
             self.flames.append(flame)
+        self.flames.pop(0)  # Remove king summon
 
         self.board_offset = (
             (WINDOW_WIDTH - self.square_size * self.board_size[0]) // 2,
@@ -169,15 +173,22 @@ class Game(Scene):
             sprite = pygame.transform.scale(sprite, (32, 48))
             self.piece_silhouette[piece] = sprite
 
-        place_pieces_randomly(
+        place_king_randomly(
             self.board,
             self.player_pieces,
-            Colour.WHITE,
+            self.active_players[0],
             self.player_regions,
-            [Piece.KING],
+            True,
         )
 
         for colour, pieces in opponents.items():
+            place_king_randomly(
+                self.board,
+                self.player_pieces,
+                colour,
+                self.player_regions,
+                False,
+            )
             place_pieces_randomly(
                 self.board,
                 self.player_pieces,
@@ -229,7 +240,7 @@ class Game(Scene):
         self.continue_text = GAME_FONT.render(
             "CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK
         )
-        self.start_text = GAME_FONT.render(">", False, WHITE)
+        self.start_text = GAME_FONT.render("START", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -527,7 +538,7 @@ class Game(Scene):
                     screen_rect,
                 )
 
-            self.start_button.render(surface)
+            # self.start_button.render(surface, None, WHITE)
             blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
