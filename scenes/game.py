@@ -119,11 +119,11 @@ class Game(Scene):
             Colour.PURPLE: Piece.QUEEN,
         }
         for i, colour in enumerate(flame_colours):
-            anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 5], 0.2)
-            anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
+            anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 6], 0.2)
+            anim.add_animation("cast", SOUL_FLAMES[i * 12 + 7 : i * 12 + 12], 0.1)
             anim.frame_index = random.randint(0, 4)
             hitbox = Button(
-                0, 100 * i+ 40, 128, 80
+                0, 100 * i + 40, 128, 80
             )  # Offset for removal of king summon
             flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
             self.flames.append(flame)
@@ -251,6 +251,24 @@ class Game(Scene):
         self.mana_word_text = GAME_FONT_SMALL.render("MANA", False, WHITE)
         self.remaining_text = GAME_FONT_SMALL.render("REMAINING", False, WHITE)
         self.summon_text = GAME_FONT_SMALL.render("TO SUMMON", False, WHITE)
+
+        self.summon_flames_vfx: dict[Piece, tuple[tuple[int, int], AnimationPlayer]] = (
+            {}
+        )
+        for i, colour in enumerate(flame_colours):
+            frames = SOUL_FLAMES[i * 12 : i * 12 + 6]
+            final_frames = [
+                pygame.transform.scale(f, self.square_size_tuple) for f in frames
+            ]
+            for i in range(len(frames)):
+                final_frames[i].set_alpha(clamp(i * (255 / len(frames)), 0, 255))
+
+            final_frames.reverse()
+            animation = AnimationPlayer("cast", final_frames, 0.2, False)
+            self.summon_flames_vfx[flame_colour_to_piece[colour]] = (
+                (-1000, -1000),
+                animation,
+            )
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -392,6 +410,10 @@ class Game(Scene):
                     return
         else:
             inside = False
+
+            for pair in self.summon_flames_vfx.values():
+                pair[1].update(dt)
+
             for flame in self.flames:
                 flame.animation.update(dt)
                 if globaldata.mana < flame.summon_cost:
@@ -427,12 +449,22 @@ class Game(Scene):
                         self.hovered_square = square
                         # If mouse released
                         if self.released:
-                            self.board[square] = self.hovered_flame.piece_type
+                            piece_type = self.hovered_flame.piece_type
+                            self.board[square] = piece_type
                             self.player_pieces[self.active_players[0]].append(square)
                             globaldata.mana -= self.hovered_flame.summon_cost
                             self.mana_text = GAME_FONT.render(
                                 f"{globaldata.mana}", False, WHITE
                             )
+
+                            pos, anim = self.summon_flames_vfx[piece_type]
+
+                            position = (
+                                square[0] * self.square_size + self.board_offset[0],
+                                square[1] * self.square_size + self.board_offset[1],
+                            )
+                            anim.reset()
+                            self.summon_flames_vfx[piece_type] = (position, anim)
 
             if not self.dragging and not inside and self.hovered_flame is not None:
                 self.hovered_flame.animation.switch_animation("idle")
@@ -556,6 +588,10 @@ class Game(Scene):
                 ]
                 surface.blit(piece_sprite, piece_screen_pos)
 
+            for piece, pair in self.summon_flames_vfx.items():
+                position, anim = pair
+                surface.blit(anim.get_frame(), position)
+
             for colour, region in self.player_regions.items():
                 if colour == self.active_players[0]:
                     continue
@@ -577,7 +613,7 @@ class Game(Scene):
             blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
-                i = i+1
+                i = i + 1
                 surface.blit(flame.animation.get_frame(), (0, 100 * i))
                 surface.blit(
                     self.piece_silhouette[flame.piece_type], (40, 100 * i + 40)
