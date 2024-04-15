@@ -261,10 +261,10 @@ class Game(Scene):
                 pygame.transform.scale(f, self.square_size_tuple) for f in frames
             ]
             for i in range(len(frames)):
-                final_frames[i].set_alpha(clamp(i * (255 / len(frames)), 0, 255))
+                final_frames[i].set_alpha(clamp(i * (255 / (len(frames)-1)), 0, 255))
 
             final_frames.reverse()
-            animation = AnimationPlayer("cast", final_frames, 0.2, False)
+            animation = AnimationPlayer("cast", final_frames, 0.1, False)
             self.summon_flames_vfx[flame_colour_to_piece[colour]] = (
                 (-1000, -1000),
                 animation,

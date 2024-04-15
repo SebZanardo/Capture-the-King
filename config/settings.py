@@ -16,7 +16,7 @@ WINDOW_SETUP = {
     "vsync": 1,
 }
 
-CAPTION = "Ludum Dare 55"
+CAPTION = "Capture the King"
 FPS = 60
 
 
