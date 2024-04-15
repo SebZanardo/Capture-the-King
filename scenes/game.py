@@ -4,7 +4,7 @@ import random
 import pygame
 
 from utilities.typehints import ActionBuffer, MouseBuffer
-from config.input import InputState, MouseButton, Action
+from config.input import InputState, MouseButton
 from baseclasses.scenemanager import Scene, SceneManager
 from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_SIZE, WINDOW_CENTRE
 from config.constants import (
@@ -274,9 +274,6 @@ class Game(Scene):
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
     ) -> None:
-        if action_buffer[Action.START][InputState.PRESSED]:
-            self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
-
         self.clicked = mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
         self.dragging = mouse_buffer[MouseButton.LEFT][InputState.HELD]
         self.released = mouse_buffer[MouseButton.LEFT][InputState.RELEASED]
