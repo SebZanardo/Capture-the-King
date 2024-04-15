@@ -34,3 +34,4 @@ pass
 # Load all font files (Must be .ttf file for brower compatibility)
 DEBUG_FONT = pygame.font.Font("assets/joystix.ttf", 10)
 GAME_FONT = pygame.font.Font("assets/joystix.ttf", 32)
+GAME_FONT_BIG = pygame.font.Font("assets/joystix.ttf", 100)
