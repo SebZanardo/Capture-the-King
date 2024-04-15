@@ -150,11 +150,10 @@ class Game(Scene):
         divided_width = math.floor(self.board_size[0] / (len(self.active_players) - 1))
         for i in range(1, len(self.active_players)):
             extra = 0
-            if (
-                i == len(self.active_players) - 1
-                and self.board_size[0] % 2 != (len(self.active_players) - 1) % 2
-            ):
-                extra = 1
+            if i == len(self.active_players) - 1:
+                extra = self.board_size[0] - self.board_size[0] // (
+                    len(self.active_players) - 1
+                ) * (len(self.active_players) - 1)
 
             colour = self.active_players[i]
             self.player_regions[colour] = (
