@@ -1,19 +1,19 @@
-import pygame
 import random
+import pygame
 
 from utilities.typehints import ActionBuffer, MouseBuffer
 from config.input import InputState, MouseButton
 from baseclasses.scenemanager import Scene, SceneManager
+from config.settings import WINDOW_CENTRE, WINDOW_HEIGHT, WINDOW_WIDTH
 from config.constants import WHITE, BACKGROUND
-from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_CENTRE
-from config.assets import CHESS_PIECES, GAME_FONT_BIG, GAME_FONT, GAME_FONT_SMALL
+from config.assets import GAME_FONT_BIG, GAME_FONT, CHESS_PIECES
 from components.button import blit_centered_text
 from components.fallingpieces import FallingSprite
 # Import the whole module of all scenes you want to switch to
-import scenes.game
+import scenes.mainmenu
 
 
-class MainMenu(Scene):
+class Win(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
 
@@ -41,22 +41,19 @@ class MainMenu(Scene):
                 )
             )
 
-        self.title_text = GAME_FONT_BIG.render("CAPTURE", False, WHITE)
-        self.title2_text = GAME_FONT.render("THE", False, WHITE)
-        self.title3_text = GAME_FONT_BIG.render("KING", False, WHITE)
-        self.ludum_text = GAME_FONT_SMALL.render(
-            "Made in 72hrs for Ludum Dare 55", False, WHITE
+        self.win_text = GAME_FONT_BIG.render("THE END!", False, WHITE)
+        self.thanks_text = GAME_FONT.render(
+            "thanks for playing our Ludum Dare entry", False, WHITE
         )
-        self.credits_text = GAME_FONT_SMALL.render(
-            "Created by Alex, Benjamin and Seb", False, WHITE
+        self.enjoy_text = GAME_FONT.render(
+            "we hope you enjoyed Capture the King", False, WHITE
         )
-        self.play_text = GAME_FONT.render("Click anywhere to play!", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
     ) -> None:
         if mouse_buffer[MouseButton.LEFT][InputState.PRESSED]:
-            self.scene_manager.switch_scene(scenes.game.Game)
+            self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
 
     def update(self, dt: float) -> None:
         for piece in self.pieces:
@@ -70,20 +67,10 @@ class MainMenu(Scene):
         for piece in self.pieces:
             surface.blit(piece.image, piece.rect.topleft)
 
+        blit_centered_text(surface, self.win_text, *WINDOW_CENTRE)
         blit_centered_text(
-            surface, self.title_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] - 150
+            surface, self.thanks_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 70
         )
         blit_centered_text(
-            surface, self.title2_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] - 80
+            surface, self.enjoy_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 100
         )
-        blit_centered_text(
-            surface, self.title3_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1]
-        )
-        blit_centered_text(
-            surface, self.ludum_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 100
-        )
-        blit_centered_text(
-            surface, self.play_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 200
-        )
-
-        surface.blit(self.credits_text, (0, 0))

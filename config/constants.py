@@ -12,7 +12,7 @@ CYAN = pygame.Color(0, 255, 255)
 BLUE = pygame.Color(0, 0, 255)
 MAGENTA = pygame.Color(255, 0, 255)
 
-BACKGROUND = pygame.Color(50, 50, 50)
+BACKGROUND = pygame.Color(30, 30, 30)
 LIGHT_SQUARE = pygame.Color(200, 200, 200)
 DARK_SQUARE = pygame.Color(150, 150, 150)
 EMPTY_SQUARE = pygame.Color(50, 50, 50)

@@ -4,7 +4,7 @@ import random
 import pygame
 
 from utilities.typehints import ActionBuffer, MouseBuffer
-from config.input import InputState, MouseButton, Action
+from config.input import InputState, MouseButton
 from baseclasses.scenemanager import Scene, SceneManager
 from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_SIZE, WINDOW_CENTRE
 from config.constants import (
@@ -48,6 +48,7 @@ import scenes.globals as globaldata
 
 # Import the whole module of all scenes you want to switch to
 import scenes.mainmenu
+import scenes.win
 
 
 class Game(Scene):
@@ -60,6 +61,7 @@ class Game(Scene):
 
         # Load current level
         current_level = levels[globaldata.level]
+        self.mana_reward = current_level["mana_awarded"]
         self.name = current_level["name"]
         board = current_level["board"]
         self.squares = board[0]
@@ -110,7 +112,7 @@ class Game(Scene):
             Colour.BLUE,
             Colour.PURPLE,
         ]
-        flame_colour_to_piece = {
+        self.colour_to_piece = {
             Colour.BLACK: Piece.KING,
             Colour.RED: Piece.PAWN,
             Colour.YELLOW: Piece.KNIGHT,
@@ -118,14 +120,22 @@ class Game(Scene):
             Colour.BLUE: Piece.ROOK,
             Colour.PURPLE: Piece.QUEEN,
         }
+        self.piece_to_colour = {
+            Piece.KING: Colour.BLACK,
+            Piece.PAWN: Colour.RED,
+            Piece.KNIGHT: Colour.YELLOW,
+            Piece.BISHOP: Colour.GREEN,
+            Piece.ROOK: Colour.BLUE,
+            Piece.QUEEN: Colour.PURPLE,
+        }
         for i, colour in enumerate(flame_colours):
-            anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 5], 0.2)
-            anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
+            anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 6], 0.2)
+            anim.add_animation("cast", SOUL_FLAMES[i * 12 + 7 : i * 12 + 12], 0.1)
             anim.frame_index = random.randint(0, 4)
             hitbox = Button(
-                0, 100 * i+ 40, 128, 80
+                0, 100 * i + 40, 128, 80
             )  # Offset for removal of king summon
-            flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
+            flame = Flame(hitbox, self.colour_to_piece[colour], anim)
             self.flames.append(flame)
         self.flames.pop(0)  # Remove king summon
 
@@ -148,11 +158,10 @@ class Game(Scene):
         divided_width = math.floor(self.board_size[0] / (len(self.active_players) - 1))
         for i in range(1, len(self.active_players)):
             extra = 0
-            if (
-                i == len(self.active_players) - 1
-                and self.board_size[0] % 2 != (len(self.active_players) - 1) % 2
-            ):
-                extra = 1
+            if i == len(self.active_players) - 1:
+                extra = self.board_size[0] - self.board_size[0] // (
+                    len(self.active_players) - 1
+                ) * (len(self.active_players) - 1)
 
             colour = self.active_players[i]
             self.player_regions[colour] = (
@@ -252,12 +261,27 @@ class Game(Scene):
         self.remaining_text = GAME_FONT_SMALL.render("REMAINING", False, WHITE)
         self.summon_text = GAME_FONT_SMALL.render("TO SUMMON", False, WHITE)
 
+        self.summon_flames_vfx: dict[Piece, tuple[tuple[int, int], AnimationPlayer]] = (
+            {}
+        )
+        for i, colour in enumerate(flame_colours):
+            frames = SOUL_FLAMES[i * 12 : i * 12 + 6]
+            final_frames = [
+                pygame.transform.scale(f, self.square_size_tuple) for f in frames
+            ]
+            for i in range(len(frames)):
+                final_frames[i].set_alpha(clamp(i * (255 / (len(frames) - 1)), 0, 255))
+
+            final_frames.reverse()
+            animation = AnimationPlayer("cast", final_frames, 0.1, False)
+            self.summon_flames_vfx[self.colour_to_piece[colour]] = (
+                (-1000, -1000),
+                animation,
+            )
+
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
     ) -> None:
-        if action_buffer[Action.START][InputState.PRESSED]:
-            self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
-
         self.clicked = mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
         self.dragging = mouse_buffer[MouseButton.LEFT][InputState.HELD]
         self.released = mouse_buffer[MouseButton.LEFT][InputState.RELEASED]
@@ -265,7 +289,10 @@ class Game(Scene):
     def update(self, dt: float) -> None:
         mouse_position = pygame.mouse.get_pos()
 
-        if self.gameover or self.moves_since_death == self.max_moves_since_death:
+        if self.moves_since_death == self.max_moves_since_death:
+            self.gameover = True
+
+        if self.gameover:
             if not self.finished:
                 print(self.outcome)
             self.finished = True
@@ -273,12 +300,11 @@ class Game(Scene):
             if self.clicked:
                 if self.outcome == Outcome.WIN:
                     globaldata.level += 1
-                    globaldata.mana += 20  # HACK: Until capturing gives mana
+                    globaldata.mana += self.mana_reward
                     if globaldata.level >= len(levels):
                         globaldata.level = 0
                         globaldata.mana = globaldata.starting_mana
-                        # TODO: Transition to win screen here
-                        self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
+                        self.scene_manager.switch_scene(scenes.win.Win)
                         return
                     else:
                         self.scene_manager.switch_scene(Game)
@@ -392,6 +418,10 @@ class Game(Scene):
                     return
         else:
             inside = False
+
+            for pair in self.summon_flames_vfx.values():
+                pair[1].update(dt)
+
             for flame in self.flames:
                 flame.animation.update(dt)
                 if globaldata.mana < flame.summon_cost:
@@ -427,12 +457,22 @@ class Game(Scene):
                         self.hovered_square = square
                         # If mouse released
                         if self.released:
-                            self.board[square] = self.hovered_flame.piece_type
+                            piece_type = self.hovered_flame.piece_type
+                            self.board[square] = piece_type
                             self.player_pieces[self.active_players[0]].append(square)
                             globaldata.mana -= self.hovered_flame.summon_cost
                             self.mana_text = GAME_FONT.render(
                                 f"{globaldata.mana}", False, WHITE
                             )
+
+                            pos, anim = self.summon_flames_vfx[piece_type]
+
+                            position = (
+                                square[0] * self.square_size + self.board_offset[0],
+                                square[1] * self.square_size + self.board_offset[1],
+                            )
+                            anim.reset()
+                            self.summon_flames_vfx[piece_type] = (position, anim)
 
             if not self.dragging and not inside and self.hovered_flame is not None:
                 self.hovered_flame.animation.switch_animation("idle")
@@ -541,7 +581,11 @@ class Game(Scene):
                     self.hovered_square[0] * self.square_size + self.board_offset[0],
                     self.hovered_square[1] * self.square_size + self.board_offset[1],
                 )
-                pygame.draw.rect(surface, WHITE, (square_pos, self.square_size_tuple))
+                colour = FACTION_COLOUR_MAP[self.piece_to_colour[self.hovered_flame.piece_type]]
+                colour.a = 100
+                pygame.draw.rect(self.transparent_surface, colour, (square_pos, self.square_size_tuple))
+                surface.blit(self.transparent_surface, (0, 0))
+                self.transparent_surface.fill(self.transparent_colorkey)
 
                 piece_screen_pos = (
                     self.hovered_square[0] * self.square_size
@@ -555,6 +599,10 @@ class Game(Scene):
                     self.hovered_flame.piece_type.value
                 ]
                 surface.blit(piece_sprite, piece_screen_pos)
+
+            for piece, pair in self.summon_flames_vfx.items():
+                position, anim = pair
+                surface.blit(anim.get_frame(), position)
 
             for colour, region in self.player_regions.items():
                 if colour == self.active_players[0]:
@@ -577,7 +625,7 @@ class Game(Scene):
             blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
-                i = i+1
+                i = i + 1
                 surface.blit(flame.animation.get_frame(), (0, 100 * i))
                 surface.blit(
                     self.piece_silhouette[flame.piece_type], (40, 100 * i + 40)
@@ -588,9 +636,11 @@ class Game(Scene):
             blit_centered_text(surface, self.mana_word_text, 64, 75)
             blit_centered_text(surface, self.remaining_text, 64, 90)
 
-            blit_centered_text(surface, self.drag_me_text, 68, 650)
-            blit_centered_text(surface, self.to_board_text, 68, 665)
-            blit_centered_text(surface, self.summon_text, 68, 680)
+            # Only show if first level
+            if globaldata.level == 0:
+                blit_centered_text(surface, self.drag_me_text, 68, 650)
+                blit_centered_text(surface, self.to_board_text, 68, 665)
+                blit_centered_text(surface, self.summon_text, 68, 680)
 
         surface.blit(self.transparent_surface, (0, 0))
 
