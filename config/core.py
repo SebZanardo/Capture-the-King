@@ -9,6 +9,7 @@ from config.input import InputState, MouseButton, Action
 from config.constants import WHITE, BLACK
 from config.assets import window, clock, DEBUG_FONT
 from scenes.mainmenu import MainMenu  # Initial scene
+from scenes.win import Win
 
 
 @singleton
@@ -20,7 +21,7 @@ class Core:
     }
 
     def __init__(self) -> None:
-        self.scene_manager = SceneManager(MainMenu)
+        self.scene_manager = SceneManager(Win)
 
     async def run(self) -> None:
         while True:
