@@ -15,6 +15,7 @@ MAGENTA = pygame.Color(255, 0, 255)
 BACKGROUND = pygame.Color(50, 50, 50)
 LIGHT_SQUARE = pygame.Color(200, 200, 200)
 DARK_SQUARE = pygame.Color(150, 150, 150)
+EMPTY_SQUARE = pygame.Color(50, 50, 50)
 
 FACTION_COLOUR_MAP = {
     Colour.WHITE: WHITE,

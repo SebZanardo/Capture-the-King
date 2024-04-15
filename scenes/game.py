@@ -14,6 +14,7 @@ from config.constants import (
     FACTION_COLOUR_MAP,
     WHITE,
     BLACK,
+    EMPTY_SQUARE,
 )
 from components.chess import (
     Colour,
@@ -223,6 +224,8 @@ class Game(Scene):
 
         self.run_simulation = False
 
+        self.player_made_move = True
+
         self.hovered_flame = None
         self.hovered_square = None
 
@@ -261,7 +264,7 @@ class Game(Scene):
             self.finished = True
 
             if self.clicked:
-                if self.outcome == Outcome.DRAW or self.outcome == Outcome.WIN:
+                if self.outcome == Outcome.WIN:
                     globaldata.level += 1
                     globaldata.mana += 20  # HACK: Until capturing gives mana
                     if globaldata.level >= len(levels):
@@ -272,7 +275,7 @@ class Game(Scene):
                         return
                     else:
                         self.scene_manager.switch_scene(Game)
-                elif self.outcome == Outcome.LOSE:
+                elif self.outcome == Outcome.DRAW or self.outcome == Outcome.LOSE:
                     globaldata.level = 0
                     globaldata.mana = globaldata.starting_mana
                     self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
@@ -303,16 +306,36 @@ class Game(Scene):
                     else:
                         pass
 
+                    # A player just lost... lol
+                    if self.active_captured_piece == Piece.KING:
+                        # TODO: Play sound effect player death
+                        self.alive_players[self.active_move.capture] = False
+                        self.moves_since_death = 0
+                        self.move_speed = self.starting_speed
+                        self.move_speed_timer = self.move_speed
+
                     self.active_move = None
 
                 # Update turn
                 self.active_player = self.active_players[self.turn]
+
+                # Stalemate (No piece made a move for any player for a turn)
+                if (
+                    self.active_player == self.active_players[0]
+                    and not self.player_made_move
+                ):
+                    self.gameover = True
+
+                if self.active_player == self.active_players[0]:
+                    self.player_made_move = False
 
                 if self.alive_players[self.active_player]:
                     selected_move = pick_random_move(
                         self.board, self.player_pieces, self.active_player
                     )
                     if selected_move:
+                        self.player_made_move = True
+
                         # Set piece to move
                         self.active_move = selected_move
                         self.active_piece = self.board[
@@ -338,14 +361,9 @@ class Game(Scene):
                         )
                         self.move_speed = clamp(self.move_speed, 0, self.starting_speed)
                     else:
-                        # TODO: Play sound effect player death
-
-                        # Slow down game
-                        self.moves_since_death = 0
-                        self.move_speed = self.starting_speed
-                        self.move_speed_timer = self.move_speed
-
-                        self.alive_players[self.active_player] = False
+                        # Can't make move
+                        # self.alive_players[self.active_player] = False
+                        pass
 
                 self.turn += 1
                 self.turn %= len(self.active_players)
@@ -419,6 +437,14 @@ class Game(Scene):
     def render(self, surface: pygame.Surface) -> None:
         self.transparent_surface.fill(self.transparent_colorkey)
         surface.fill(BACKGROUND)
+
+        background_rect = (
+            self.board_offset[0],
+            self.board_offset[1],
+            self.board_size[0] * self.square_size,
+            self.board_size[1] * self.square_size,
+        )
+        pygame.draw.rect(surface, EMPTY_SQUARE, background_rect)
 
         for square, piece in self.board.items():
             colour = LIGHT_SQUARE if (square[0] + square[1]) % 2 == 0 else DARK_SQUARE
@@ -524,6 +550,8 @@ class Game(Scene):
                 surface.blit(piece_sprite, piece_screen_pos)
 
             for colour, region in self.player_regions.items():
+                if colour == self.active_players[0]:
+                    continue
                 screen_rect = (
                     region[0] * self.square_size + self.board_offset[0],
                     region[1] * self.square_size + self.board_offset[1],
@@ -531,7 +559,7 @@ class Game(Scene):
                     region[3] * self.square_size,
                 )
                 colour = FACTION_COLOUR_MAP[colour]
-                colour.a = 120
+                colour.a = 100
                 pygame.draw.rect(
                     self.transparent_surface,
                     colour,
@@ -581,7 +609,7 @@ class Game(Scene):
                 )
                 blit_centered_text(
                     surface,
-                    self.continue_text,
+                    self.restart_text,
                     WINDOW_CENTRE[0],
                     WINDOW_CENTRE[1] + 70,
                 )
