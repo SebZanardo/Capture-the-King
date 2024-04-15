@@ -6,8 +6,7 @@ from utilities.typehints import InputBuffer
 from baseclasses.scenemanager import SceneManager
 from config.settings import FPS, action_mappings
 from config.input import InputState, MouseButton, Action
-from config.constants import WHITE, BLACK
-from config.assets import window, clock, DEBUG_FONT
+from config.assets import window, clock
 from scenes.mainmenu import MainMenu  # Initial scene
 
 
@@ -37,12 +36,12 @@ class Core:
             self.scene_manager.render(window)
 
             # For easy performance testing
-            fps_debug = DEBUG_FONT.render(
-                f"FPS {clock.get_fps():.0f}", False, WHITE, BLACK
-            )
-            dt_debug = DEBUG_FONT.render(f"DT {dt}", False, WHITE, BLACK)
-            window.blit(fps_debug, (0, 0))
-            window.blit(dt_debug, (0, 10))
+            # fps_debug = DEBUG_FONT.render(
+            #     f"FPS {clock.get_fps():.0f}", False, WHITE, BLACK
+            # )
+            # dt_debug = DEBUG_FONT.render(f"DT {dt}", False, WHITE, BLACK)
+            # window.blit(fps_debug, (0, 0))
+            # window.blit(dt_debug, (0, 10))
 
             pygame.display.flip()
             await asyncio.sleep(0)

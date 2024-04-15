@@ -2,21 +2,19 @@ import pygame
 import random
 
 from utilities.typehints import ActionBuffer, MouseBuffer
-from config.input import InputState, MouseButton, Action
+from config.input import InputState, MouseButton
 from baseclasses.scenemanager import Scene, SceneManager
-from config.constants import MAGENTA, BLACK
-from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT
-
-from config.assets import CHESS_PIECES
-
+from config.constants import WHITE, BACKGROUND
+from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_CENTRE
+from config.assets import CHESS_PIECES, GAME_FONT_BIG, GAME_FONT, GAME_FONT_SMALL
+from components.button import blit_centered_text
 
 # Import the whole module of all scenes you want to switch to
 import scenes.game
 
 
 class FallingSprite(pygame.sprite.Sprite):
-    def __init__(self, image, pos_x, pos_y, speed, rotate_speed):
-        super().__init__()
+    def __init__(self, image, pos_x, pos_y, speed, rotate_speed) -> None:
         self.original_image = image  # Store the original image for reference
         self.image = image.copy()  # Create a working copy for rotation
         self.rect = self.image.get_rect(center=(pos_x, pos_y))
@@ -24,15 +22,15 @@ class FallingSprite(pygame.sprite.Sprite):
         self.angle = 0
         self.rotate_speed = rotate_speed
 
-    def update(self, dt):
-        self.rect.y += self.speed_y
+    def update(self, dt: float) -> None:
+        self.rect.y += self.speed_y * dt
 
         # Calculate half width and half height
         half_width = self.image.get_rect().width // 2
-        half_height = self.image.get_rect().height// 2
+        half_height = self.image.get_rect().height // 2
 
         # Calculate maximum corner distance from center (diagonal)
-        max_distance = (half_width**2 + half_height**2)**0.5
+        max_distance = (half_width**2 + half_height**2) ** 0.5
 
         # Calculate rotation speed based on desired speed and max distance
         self.angle += (self.rotate_speed) / max_distance
@@ -49,6 +47,7 @@ class FallingSprite(pygame.sprite.Sprite):
 class MainMenu(Scene):
     def __init__(self, scene_manager: SceneManager) -> None:
         super().__init__(scene_manager)
+
         self.square_size = 100
         self.piece_size = (self.square_size, self.square_size / 2 * 3)
         self.scaled_pieces = [
@@ -60,19 +59,34 @@ class MainMenu(Scene):
         for i, image in enumerate(falling_pieces):
             x = random.randint(0, WINDOW_WIDTH)
             y = random.randint(0, WINDOW_HEIGHT)
-            speed = random.randint(1, 4)
+            speed = random.randint(1, 4) * 50
             # trust
             rotate_speed = random.randint(25, 50) * random.choice((1, -1))
-            self.pieces.append(FallingSprite(
-                image=image, pos_x=x, pos_y=y, speed=speed, rotate_speed=rotate_speed))
+            self.pieces.append(
+                FallingSprite(
+                    image=image,
+                    pos_x=x,
+                    pos_y=y,
+                    speed=speed,
+                    rotate_speed=rotate_speed,
+                )
+            )
+
+        self.title_text = GAME_FONT_BIG.render("CAPTURE", False, WHITE)
+        self.title2_text = GAME_FONT.render("THE", False, WHITE)
+        self.title3_text = GAME_FONT_BIG.render("KING", False, WHITE)
+        self.ludum_text = GAME_FONT_SMALL.render(
+            "Made in 72hrs for Ludum Dare 55", False, WHITE
+        )
+        self.credits_text = GAME_FONT_SMALL.render(
+            "Created by Alex, Benjamin and Seb", False, WHITE
+        )
+        self.play_text = GAME_FONT.render("Click anywhere to play!", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
     ) -> None:
-        if (
-            action_buffer[Action.START][InputState.PRESSED]
-            or mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
-        ):
+        if mouse_buffer[MouseButton.LEFT][InputState.PRESSED]:
             self.scene_manager.switch_scene(scenes.game.Game)
 
     def update(self, dt: float) -> None:
@@ -82,6 +96,25 @@ class MainMenu(Scene):
                 piece.rect.bottom = 0
 
     def render(self, surface: pygame.Surface) -> None:
-        surface.fill(BLACK)
+        surface.fill(BACKGROUND)
+
         for piece in self.pieces:
             surface.blit(piece.image, piece.rect.topleft)
+
+        blit_centered_text(
+            surface, self.title_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] - 150
+        )
+        blit_centered_text(
+            surface, self.title2_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] - 80
+        )
+        blit_centered_text(
+            surface, self.title3_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1]
+        )
+        blit_centered_text(
+            surface, self.ludum_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 100
+        )
+        blit_centered_text(
+            surface, self.play_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 200
+        )
+
+        surface.blit(self.credits_text, (0, 0))

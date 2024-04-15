@@ -4,7 +4,7 @@ from utilities.typehints import ActionBuffer, MouseBuffer
 from config.input import InputState, MouseButton
 from baseclasses.scenemanager import Scene, SceneManager
 from config.settings import WINDOW_CENTRE
-from config.constants import BACKGROUND, WHITE
+from config.constants import WHITE, BACKGROUND
 from config.assets import GAME_FONT_BIG, GAME_FONT
 from components.button import blit_centered_text
 
