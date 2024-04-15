@@ -624,9 +624,11 @@ class Game(Scene):
             blit_centered_text(surface, self.mana_word_text, 64, 75)
             blit_centered_text(surface, self.remaining_text, 64, 90)
 
-            blit_centered_text(surface, self.drag_me_text, 68, 650)
-            blit_centered_text(surface, self.to_board_text, 68, 665)
-            blit_centered_text(surface, self.summon_text, 68, 680)
+            # Only show if first level
+            if globaldata.level == 0:
+                blit_centered_text(surface, self.drag_me_text, 68, 650)
+                blit_centered_text(surface, self.to_board_text, 68, 665)
+                blit_centered_text(surface, self.summon_text, 68, 680)
 
         surface.blit(self.transparent_surface, (0, 0))
 
