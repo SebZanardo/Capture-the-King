@@ -581,9 +581,15 @@ class Game(Scene):
                     self.hovered_square[0] * self.square_size + self.board_offset[0],
                     self.hovered_square[1] * self.square_size + self.board_offset[1],
                 )
-                colour = FACTION_COLOUR_MAP[self.piece_to_colour[self.hovered_flame.piece_type]]
+                colour = FACTION_COLOUR_MAP[
+                    self.piece_to_colour[self.hovered_flame.piece_type]
+                ]
                 colour.a = 100
-                pygame.draw.rect(self.transparent_surface, colour, (square_pos, self.square_size_tuple))
+                pygame.draw.rect(
+                    self.transparent_surface,
+                    colour,
+                    (square_pos, self.square_size_tuple),
+                )
                 surface.blit(self.transparent_surface, (0, 0))
                 self.transparent_surface.fill(self.transparent_colorkey)
 

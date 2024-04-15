@@ -9,6 +9,7 @@ from config.constants import WHITE, BACKGROUND
 from config.assets import GAME_FONT_BIG, GAME_FONT, CHESS_PIECES
 from components.button import blit_centered_text
 from components.fallingpieces import FallingSprite
+
 # Import the whole module of all scenes you want to switch to
 import scenes.mainmenu
 
