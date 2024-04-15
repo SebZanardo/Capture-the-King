@@ -11,6 +11,7 @@ class Button:
         self.width = width
         self.height = height
         self.rect = (x, y, width, height)
+        self.center = (x + width // 2, y + height // 2)
 
     def inside(self, x: int, y: int) -> bool:
         return (

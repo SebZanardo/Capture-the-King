@@ -39,6 +39,7 @@ from config.assets import (
     GAME_FONT,
     GAME_FONT_BIG,
 )
+from components.levels import levels
 from utilities.math import lerp, clamp
 import scenes.globals as globaldata
 
@@ -54,8 +55,13 @@ class Game(Scene):
         self.transparent_surface = pygame.Surface(WINDOW_SIZE, pygame.SRCALPHA)
         self.transparent_surface.set_colorkey(self.transparent_colorkey)
 
-        self.squares = 100
-        self.board_size = (15, 10)
+        # Load current level
+        current_level = levels[globaldata.level]
+        self.name = current_level["name"]
+        board = current_level["board"]
+        self.squares = board[0]
+        self.board_size = (board[1], board[2])
+
         self.square_size = min(
             (WINDOW_WIDTH - 256) // self.board_size[0],
             (WINDOW_HEIGHT - 128) // self.board_size[1],
@@ -68,7 +74,11 @@ class Game(Scene):
         ]
         self.piece_offset = (0, -self.piece_size[1] // 2)
 
-        self.active_players = [Colour.WHITE, Colour.PURPLE, Colour.GREEN, Colour.BLUE]
+        self.active_players = [Colour.WHITE]
+        opponents = current_level["opponents"]
+        for colour in opponents.keys():
+            self.active_players.append(colour)
+
         self.alive_players = {player: True for player in self.active_players}
 
         self.player_piece_sprites = {}
@@ -159,7 +169,6 @@ class Game(Scene):
             sprite = pygame.transform.scale(sprite, (32, 48))
             self.piece_silhouette[piece] = sprite
 
-        # NOTE: King must be first in array and only one king allowed (If checking is enabled)
         place_pieces_randomly(
             self.board,
             self.player_pieces,
@@ -167,27 +176,15 @@ class Game(Scene):
             self.player_regions,
             [Piece.KING],
         )
-        place_pieces_randomly(
-            self.board,
-            self.player_pieces,
-            self.active_players[1],
-            self.player_regions,
-            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP] * 2,
-        )
-        place_pieces_randomly(
-            self.board,
-            self.player_pieces,
-            self.active_players[2],
-            self.player_regions,
-            [Piece.KING, Piece.PAWN, Piece.ROOK, Piece.KNIGHT, Piece.BISHOP] * 2,
-        )
-        place_pieces_randomly(
-            self.board,
-            self.player_pieces,
-            self.active_players[3],
-            self.player_regions,
-            [Piece.KING, Piece.BISHOP, Piece.KNIGHT, Piece.KNIGHT, Piece.QUEEN] * 2,
-        )
+
+        for colour, pieces in opponents.items():
+            place_pieces_randomly(
+                self.board,
+                self.player_pieces,
+                colour,
+                self.player_regions,
+                pieces,
+            )
 
         self.start_button = Button(
             WINDOW_WIDTH - 114, WINDOW_HEIGHT // 2 - 50, 100, 100
@@ -218,13 +215,21 @@ class Game(Scene):
         self.hovered_flame = None
         self.hovered_square = None
 
+        self.level_text = GAME_FONT.render(f"{self.name}", False, WHITE)
         self.mana_text = GAME_FONT.render(f"{globaldata.mana}", False, WHITE)
-        self.fight_complete_text = GAME_FONT.render("FIGHT CONCLUDED", False, WHITE, BLACK)
+        self.fight_complete_text = GAME_FONT.render(
+            "FIGHT CONCLUDED", False, WHITE, BLACK
+        )
         self.win_text = GAME_FONT_BIG.render("YOU WIN!", False, WHITE, BLACK)
         self.draw_text = GAME_FONT_BIG.render("STALEMATE!", False, WHITE, BLACK)
         self.lose_text = GAME_FONT_BIG.render("YOU LOST!", False, WHITE, BLACK)
-        self.restart_text = GAME_FONT.render("CLICK ANYWHERE TO RESTART", False, WHITE, BLACK)
-        self.continue_text = GAME_FONT.render("CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK)
+        self.restart_text = GAME_FONT.render(
+            "CLICK ANYWHERE TO RESTART", False, WHITE, BLACK
+        )
+        self.continue_text = GAME_FONT.render(
+            "CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK
+        )
+        self.start_text = GAME_FONT.render(">", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -239,63 +244,30 @@ class Game(Scene):
     def update(self, dt: float) -> None:
         mouse_position = pygame.mouse.get_pos()
 
-        inside = False
-        for flame in self.flames:
-            flame.animation.update(dt)
-            if globaldata.mana < flame.summon_cost:
-                continue
+        if self.gameover or self.moves_since_death == self.max_moves_since_death:
+            if not self.finished:
+                print(self.outcome)
+            self.finished = True
 
-            if flame.hitbox.inside(*mouse_position):
-                if self.hovered_flame != flame:
-                    if self.hovered_flame is not None:
-                        self.hovered_flame.animation.switch_animation("idle")
-                    self.hovered_flame = flame
-                    self.hovered_flame.animation.switch_animation("cast")
-                inside = True
-
-        self.hovered_square = None
-
-        # Attempt summon of piece
-        if self.hovered_flame is not None:
-            # Find square we are over
-            square = (
-                (mouse_position[0] - self.board_offset[0]) // self.square_size,
-                (mouse_position[1] - self.board_offset[1]) // self.square_size,
-            )
-            # If square inside player's region
-            region = self.player_regions[self.active_players[0]]
-            if (
-                square[0] >= region[0]
-                and square[0] < region[0] + region[2]
-                and square[1] >= region[1]
-                and square[1] < region[1] + region[3]
-            ):
-                # If square not occupied or non-existant
-                if square in self.board and self.board[square] is None:
-                    self.hovered_square = square
-                    # If mouse released
-                    if self.released:
-                        self.board[square] = self.hovered_flame.piece_type
-                        self.player_pieces[self.active_players[0]].append(square)
-                        globaldata.mana -= self.hovered_flame.summon_cost
-                        self.mana_text = GAME_FONT.render(
-                            f"{globaldata.mana}", False, WHITE
-                        )
-
-        if not self.dragging and not inside and self.hovered_flame is not None:
-            self.hovered_flame.animation.switch_animation("idle")
-            self.hovered_flame = None
-
-        if self.clicked and self.start_button.inside(*mouse_position):
-            self.run_simulation = True
+            if self.clicked:
+                if self.outcome == Outcome.DRAW or self.outcome == Outcome.WIN:
+                    globaldata.level += 1
+                    globaldata.mana += 20  # HACK: Until capturing gives mana
+                    if globaldata.level >= len(levels):
+                        globaldata.level = 0
+                        globaldata.mana = globaldata.starting_mana
+                        # TODO: Transition to win screen here
+                        self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
+                        return
+                    else:
+                        self.scene_manager.switch_scene(Game)
+                elif self.outcome == Outcome.LOSE:
+                    globaldata.level = 0
+                    globaldata.mana = globaldata.starting_mana
+                    self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
+            return
 
         if self.run_simulation:
-            if self.gameover or self.moves_since_death == self.max_moves_since_death:
-                if not self.finished:
-                    print(self.outcome)
-                self.finished = True
-                return
-
             self.move_speed_timer -= dt
             if self.move_speed_timer > 0 and self.active_move:
                 # Lerp piece position
@@ -382,6 +354,56 @@ class Game(Scene):
                     self.gameover = True
                     self.outcome = Outcome.WIN
                     return
+        else:
+            inside = False
+            for flame in self.flames:
+                flame.animation.update(dt)
+                if globaldata.mana < flame.summon_cost:
+                    continue
+
+                if flame.hitbox.inside(*mouse_position):
+                    if self.hovered_flame != flame:
+                        if self.hovered_flame is not None:
+                            self.hovered_flame.animation.switch_animation("idle")
+                        self.hovered_flame = flame
+                        self.hovered_flame.animation.switch_animation("cast")
+                    inside = True
+
+            self.hovered_square = None
+
+            # Attempt summon of piece
+            if self.hovered_flame is not None:
+                # Find square we are over
+                square = (
+                    (mouse_position[0] - self.board_offset[0]) // self.square_size,
+                    (mouse_position[1] - self.board_offset[1]) // self.square_size,
+                )
+                # If square inside player's region
+                region = self.player_regions[self.active_players[0]]
+                if (
+                    square[0] >= region[0]
+                    and square[0] < region[0] + region[2]
+                    and square[1] >= region[1]
+                    and square[1] < region[1] + region[3]
+                ):
+                    # If square not occupied or non-existant
+                    if square in self.board and self.board[square] is None:
+                        self.hovered_square = square
+                        # If mouse released
+                        if self.released:
+                            self.board[square] = self.hovered_flame.piece_type
+                            self.player_pieces[self.active_players[0]].append(square)
+                            globaldata.mana -= self.hovered_flame.summon_cost
+                            self.mana_text = GAME_FONT.render(
+                                f"{globaldata.mana}", False, WHITE
+                            )
+
+            if not self.dragging and not inside and self.hovered_flame is not None:
+                self.hovered_flame.animation.switch_animation("idle")
+                self.hovered_flame = None
+
+            if self.clicked and self.start_button.inside(*mouse_position):
+                self.run_simulation = True
 
     def render(self, surface: pygame.Surface) -> None:
         self.transparent_surface.fill(self.transparent_colorkey)
@@ -506,6 +528,7 @@ class Game(Scene):
                 )
 
             self.start_button.render(surface)
+            blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
                 surface.blit(flame.animation.get_frame(), (0, 100 * i))
@@ -536,7 +559,7 @@ class Game(Scene):
                     surface,
                     self.continue_text,
                     WINDOW_CENTRE[0],
-                    WINDOW_CENTRE[1]+70,
+                    WINDOW_CENTRE[1] + 70,
                 )
             elif self.outcome == Outcome.DRAW:
                 blit_centered_text(
@@ -549,7 +572,7 @@ class Game(Scene):
                     surface,
                     self.continue_text,
                     WINDOW_CENTRE[0],
-                    WINDOW_CENTRE[1]+70,
+                    WINDOW_CENTRE[1] + 70,
                 )
             elif self.outcome == Outcome.LOSE:
                 blit_centered_text(
@@ -562,5 +585,11 @@ class Game(Scene):
                     surface,
                     self.restart_text,
                     WINDOW_CENTRE[0],
-                    WINDOW_CENTRE[1]+70,
+                    WINDOW_CENTRE[1] + 70,
                 )
+        blit_centered_text(
+            surface,
+            self.level_text,
+            WINDOW_CENTRE[0],
+            WINDOW_HEIGHT - 34,
+        )
