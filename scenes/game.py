@@ -309,8 +309,7 @@ class Game(Scene):
                     else:
                         self.scene_manager.switch_scene(Game)
                 elif self.outcome == Outcome.DRAW or self.outcome == Outcome.LOSE:
-                    globaldata.level = 0
-                    globaldata.mana = globaldata.starting_mana
+                    globaldata.mana += self.mana_reward
                     self.scene_manager.switch_scene(Game)
             return
 
