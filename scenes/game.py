@@ -199,7 +199,7 @@ class Game(Scene):
             )
 
         self.start_button = Button(
-            WINDOW_WIDTH - 114, WINDOW_HEIGHT // 2 - 50, 100, 100
+            WINDOW_WIDTH - 128, WINDOW_HEIGHT // 2 - 50, 128, 100
         )
 
         self.turn = 0  # Index in self.active_players array
@@ -278,7 +278,7 @@ class Game(Scene):
                 elif self.outcome == Outcome.DRAW or self.outcome == Outcome.LOSE:
                     globaldata.level = 0
                     globaldata.mana = globaldata.starting_mana
-                    self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
+                    self.scene_manager.switch_scene(Game)
             return
 
         if self.run_simulation:
@@ -566,7 +566,7 @@ class Game(Scene):
                     screen_rect,
                 )
 
-            # self.start_button.render(surface, None, WHITE)
+            self.start_button.render(surface, DARK_SQUARE, None)
             blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
