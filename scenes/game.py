@@ -112,13 +112,21 @@ class Game(Scene):
             Colour.BLUE,
             Colour.PURPLE,
         ]
-        flame_colour_to_piece = {
+        self.colour_to_piece = {
             Colour.BLACK: Piece.KING,
             Colour.RED: Piece.PAWN,
             Colour.YELLOW: Piece.KNIGHT,
             Colour.GREEN: Piece.BISHOP,
             Colour.BLUE: Piece.ROOK,
             Colour.PURPLE: Piece.QUEEN,
+        }
+        self.piece_to_colour = {
+            Piece.KING: Colour.BLACK,
+            Piece.PAWN: Colour.RED,
+            Piece.KNIGHT: Colour.YELLOW,
+            Piece.BISHOP: Colour.GREEN,
+            Piece.ROOK: Colour.BLUE,
+            Piece.QUEEN: Colour.PURPLE,
         }
         for i, colour in enumerate(flame_colours):
             anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 6], 0.2)
@@ -127,7 +135,7 @@ class Game(Scene):
             hitbox = Button(
                 0, 100 * i + 40, 128, 80
             )  # Offset for removal of king summon
-            flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
+            flame = Flame(hitbox, self.colour_to_piece[colour], anim)
             self.flames.append(flame)
         self.flames.pop(0)  # Remove king summon
 
@@ -266,7 +274,7 @@ class Game(Scene):
 
             final_frames.reverse()
             animation = AnimationPlayer("cast", final_frames, 0.1, False)
-            self.summon_flames_vfx[flame_colour_to_piece[colour]] = (
+            self.summon_flames_vfx[self.colour_to_piece[colour]] = (
                 (-1000, -1000),
                 animation,
             )
@@ -573,7 +581,11 @@ class Game(Scene):
                     self.hovered_square[0] * self.square_size + self.board_offset[0],
                     self.hovered_square[1] * self.square_size + self.board_offset[1],
                 )
-                pygame.draw.rect(surface, WHITE, (square_pos, self.square_size_tuple))
+                colour = FACTION_COLOUR_MAP[self.piece_to_colour[self.hovered_flame.piece_type]]
+                colour.a = 100
+                pygame.draw.rect(self.transparent_surface, colour, (square_pos, self.square_size_tuple))
+                surface.blit(self.transparent_surface, (0, 0))
+                self.transparent_surface.fill(self.transparent_colorkey)
 
                 piece_screen_pos = (
                     self.hovered_square[0] * self.square_size
