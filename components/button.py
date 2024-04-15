@@ -31,3 +31,11 @@ class Button:
             pygame.draw.rect(surface, colour, self.rect)
         if border_colour is not None:
             pygame.draw.rect(surface, border_colour, self.rect, border_width)
+
+
+def blit_centered_text(
+    surface: pygame.Surface, text: pygame.Surface, cx: int, cy: int
+) -> None:
+    text_rect = text.get_rect()
+    text_rect.center = (cx, cy)
+    surface.blit(text, text_rect)

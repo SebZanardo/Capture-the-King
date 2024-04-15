@@ -29,9 +29,11 @@ from components.boardgeneration import (
     place_pieces_randomly,
 )
 from components.animationplayer import AnimationPlayer
-from components.button import Button
-from config.assets import CHESS_PIECES, SOUL_FLAMES
+from components.button import Button, blit_centered_text
+from components.flame import Flame
+from config.assets import CHESS_PIECES, CHESS_SILHOUETTES, SOUL_FLAMES, GAME_FONT
 from utilities.math import lerp, clamp
+import scenes.globals as globaldata
 
 # Import the whole module of all scenes you want to switch to
 import scenes.mainmenu
@@ -49,7 +51,7 @@ class Game(Scene):
         self.board_size = (15, 10)
         self.square_size = min(
             (WINDOW_WIDTH - 256) // self.board_size[0],
-            (WINDOW_HEIGHT - 64) // self.board_size[1],
+            (WINDOW_HEIGHT - 128) // self.board_size[1],
         )
         self.square_size_tuple = (self.square_size, self.square_size)
 
@@ -59,7 +61,7 @@ class Game(Scene):
         ]
         self.piece_offset = (0, -self.piece_size[1] // 2)
 
-        self.active_players = [Colour.WHITE, Colour.RED, Colour.YELLOW, Colour.BLACK]
+        self.active_players = [Colour.WHITE, Colour.PURPLE, Colour.GREEN, Colour.BLUE]
         self.alive_players = {player: True for player in self.active_players}
 
         self.player_piece_sprites = {}
@@ -79,8 +81,7 @@ class Game(Scene):
             ]
             self.player_piece_sprites[colour] = coloured_pieces
 
-        self.flames = {}
-        self.flame_hitbox = {}
+        self.flames = []
         flame_colours = [
             Colour.BLACK,
             Colour.RED,
@@ -89,12 +90,21 @@ class Game(Scene):
             Colour.BLUE,
             Colour.PURPLE,
         ]
+        flame_colour_to_piece = {
+            Colour.BLACK: Piece.KING,
+            Colour.RED: Piece.PAWN,
+            Colour.YELLOW: Piece.KNIGHT,
+            Colour.GREEN: Piece.BISHOP,
+            Colour.BLUE: Piece.ROOK,
+            Colour.PURPLE: Piece.QUEEN,
+        }
         for i, colour in enumerate(flame_colours):
             anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 5], 0.2)
             anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
             anim.frame_index = random.randint(0, 4)
-            self.flames[colour] = anim
-            self.flame_hitbox[colour] = Button(0, 100 * i + 40, 128, 80)
+            hitbox = Button(0, 100 * i + 40, 128, 80)
+            flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
+            self.flames.append(flame)
 
         self.board_offset = (
             (WINDOW_WIDTH - self.square_size * self.board_size[0]) // 2,
@@ -124,10 +134,23 @@ class Game(Scene):
             colour = self.active_players[i]
             self.player_regions[colour] = (
                 divided_width * (i - 1),
-                0,
+                -0.8,
                 divided_width + extra,
-                math.floor(self.board_size[1] / 2),
+                math.floor(self.board_size[1] / 2) + 0.8,
             )
+
+        self.piece_silhouette = {}
+        silhouette_order = [
+            Piece.PAWN,
+            Piece.KNIGHT,
+            Piece.BISHOP,
+            Piece.ROOK,
+            Piece.QUEEN,
+            Piece.KING,
+        ]
+        for piece, sprite in zip(silhouette_order, CHESS_SILHOUETTES):
+            sprite = pygame.transform.scale(sprite, (32, 48))
+            self.piece_silhouette[piece] = sprite
 
         # NOTE: King must be first in array and only one king allowed (If checking is enabled)
         place_pieces_randomly(
@@ -135,7 +158,7 @@ class Game(Scene):
             self.player_pieces,
             Colour.WHITE,
             self.player_regions,
-            [Piece.KING, Piece.QUEEN, Piece.QUEEN, Piece.ROOK, Piece.BISHOP] * 2,
+            [Piece.KING],
         )
         place_pieces_randomly(
             self.board,
@@ -169,7 +192,7 @@ class Game(Scene):
         self.moves_since_death = 0
         self.max_moves_since_death = 200
 
-        self.starting_speed = 0.2
+        self.starting_speed = 0.5
         self.move_speed = self.starting_speed
         self.move_speed_timer = self.starting_speed
 
@@ -185,7 +208,9 @@ class Game(Scene):
 
         self.run_simulation = False
 
-        self.hovered_flame_anim = None
+        self.hovered_flame = None
+
+        self.mana_text = GAME_FONT.render(f"{globaldata.mana}", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -194,19 +219,53 @@ class Game(Scene):
             self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
 
         self.clicked = mouse_buffer[MouseButton.LEFT][InputState.PRESSED]
+        self.dragging = mouse_buffer[MouseButton.LEFT][InputState.HELD]
+        self.released = mouse_buffer[MouseButton.LEFT][InputState.RELEASED]
 
     def update(self, dt: float) -> None:
         mouse_position = pygame.mouse.get_pos()
 
-        for hitbox, flame in zip(self.flame_hitbox.values(), self.flames.values()):
-            if hitbox.inside(*mouse_position):
-                if self.hovered_flame_anim != flame:
-                    if self.hovered_flame_anim is not None:
-                        self.hovered_flame_anim.switch_animation("idle")
-                    self.hovered_flame_anim = flame
-                    self.hovered_flame_anim.switch_animation("cast")
+        inside = False
+        for flame in self.flames:
+            flame.animation.update(dt)
+            if globaldata.mana < flame.summon_cost:
+                continue
 
-            flame.update(dt)
+            if flame.hitbox.inside(*mouse_position):
+                if self.hovered_flame != flame:
+                    if self.hovered_flame is not None:
+                        self.hovered_flame.animation.switch_animation("idle")
+                    self.hovered_flame = flame
+                    self.hovered_flame.animation.switch_animation("cast")
+                inside = True
+
+        # Attempt summon of piece
+        if self.released and self.hovered_flame is not None:
+            # Find square we are over
+            square = (
+                (mouse_position[0] - self.board_offset[0]) // self.square_size,
+                (mouse_position[1] - self.board_offset[1]) // self.square_size,
+            )
+            # If square inside player's region
+            region = self.player_regions[self.active_players[0]]
+            if (
+                square[0] >= region[0]
+                or square[0] < region[0] + region[2]
+                or square[1] >= region[1]
+                or square[1] < region[1] + region[3]
+            ):
+                # If square not occupied or non-existant
+                if square in self.board and self.board[square] is None:
+                    self.board[square] = self.hovered_flame.piece_type
+                    self.player_pieces[self.active_players[0]].append(square)
+                    globaldata.mana -= self.hovered_flame.summon_cost
+                    self.mana_text = GAME_FONT.render(
+                        f"{globaldata.mana}", False, WHITE
+                    )
+
+        if not self.dragging and not inside and self.hovered_flame is not None:
+            self.hovered_flame.animation.switch_animation("idle")
+            self.hovered_flame = None
 
         if self.clicked and self.start_button.inside(*mouse_position):
             self.run_simulation = True
@@ -406,8 +465,16 @@ class Game(Scene):
                     colour,
                     screen_rect,
                 )
+
             self.start_button.render(surface)
-            for i, flame in enumerate(self.flames.values()):
-                surface.blit(flame.get_frame(), (0, 100 * i))
+
+            for i, flame in enumerate(self.flames):
+                surface.blit(flame.animation.get_frame(), (0, 100 * i))
+                surface.blit(
+                    self.piece_silhouette[flame.piece_type], (40, 100 * i + 40)
+                )
+                blit_centered_text(surface, flame.summon_text, 80, 100 * i + 70)
+
+            blit_centered_text(surface, self.mana_text, 64, 650)
 
         surface.blit(self.transparent_surface, (0, 0))
