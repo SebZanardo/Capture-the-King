@@ -17,8 +17,12 @@ class Win(Scene):
         super().__init__(scene_manager)
 
         self.win_text = GAME_FONT_BIG.render("THE END!", False, WHITE)
-        self.thanks_text = GAME_FONT.render("thanks for playing our Ludum Dare entry", False, WHITE)
-        self.enjoy_text = GAME_FONT.render("we hope you enjoyed Capture the King", False, WHITE)
+        self.thanks_text = GAME_FONT.render(
+            "thanks for playing our Ludum Dare entry", False, WHITE
+        )
+        self.enjoy_text = GAME_FONT.render(
+            "we hope you enjoyed Capture the King", False, WHITE
+        )
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -33,6 +37,9 @@ class Win(Scene):
         surface.fill(BACKGROUND)
 
         blit_centered_text(surface, self.win_text, *WINDOW_CENTRE)
-        blit_centered_text(surface, self.thanks_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1]+70)
-        blit_centered_text(surface, self.enjoy_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1]+100)
-
+        blit_centered_text(
+            surface, self.thanks_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 70
+        )
+        blit_centered_text(
+            surface, self.enjoy_text, WINDOW_CENTRE[0], WINDOW_CENTRE[1] + 100
+        )

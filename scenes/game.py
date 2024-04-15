@@ -263,7 +263,7 @@ class Game(Scene):
                 pygame.transform.scale(f, self.square_size_tuple) for f in frames
             ]
             for i in range(len(frames)):
-                final_frames[i].set_alpha(clamp(i * (255 / (len(frames)-1)), 0, 255))
+                final_frames[i].set_alpha(clamp(i * (255 / (len(frames) - 1)), 0, 255))
 
             final_frames.reverse()
             animation = AnimationPlayer("cast", final_frames, 0.1, False)
@@ -285,7 +285,10 @@ class Game(Scene):
     def update(self, dt: float) -> None:
         mouse_position = pygame.mouse.get_pos()
 
-        if self.gameover or self.moves_since_death == self.max_moves_since_death:
+        if self.moves_since_death == self.max_moves_since_death:
+            self.gameover = True
+
+        if self.gameover:
             if not self.finished:
                 print(self.outcome)
             self.finished = True
