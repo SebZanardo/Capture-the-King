@@ -46,7 +46,13 @@ def generate_empty_board(squares: int, width: int, height: int) -> Board:
     if iterations != squares:
         print("Too many squares to fit within bounds!")
 
-    return board
+    # Sort board squares
+    sorted_board_squares = list(board.items())
+    sorted_board_squares.sort(key=lambda item: item[0][1])
+
+    sorted_board = dict(sorted_board_squares)
+
+    return sorted_board
 
 
 def generate_empty_player_pieces(players: list[Colour]) -> PlayerPieces:

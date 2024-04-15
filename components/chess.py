@@ -8,7 +8,10 @@ class Colour(Enum):
     WHITE = 0
     BLACK = auto()
     RED = auto()
+    YELLOW = auto()
+    GREEN = auto()
     BLUE = auto()
+    PURPLE = auto()
     DEAD = auto()  # Keep at end for grey pieces
 
 
@@ -320,6 +323,7 @@ def find_captures(moves: list[Move]) -> list[Move]:
             captures.append(move)
     return captures
 
+
 def is_attack(
     board: Board, player_pieces: PlayerPieces, player_colour: Colour, move: Move
 ) -> Optional[list[Move]]:
@@ -337,7 +341,10 @@ def is_attack(
 
     return threatening_captures
 
-def find_attacks(board: Board, player_pieces: PlayerPieces, player_colour: Colour, moves: list[Move]) -> list[Move]:
+
+def find_attacks(
+    board: Board, player_pieces: PlayerPieces, player_colour: Colour, moves: list[Move]
+) -> list[Move]:
     attacks = []
     for move in moves:
         if is_attack(board, player_pieces, player_colour, move):
