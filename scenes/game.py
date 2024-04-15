@@ -40,6 +40,7 @@ from config.assets import (
     SOUL_FLAMES,
     GAME_FONT,
     GAME_FONT_BIG,
+    GAME_FONT_SMALL,
 )
 from components.levels import levels
 from utilities.math import lerp, clamp
@@ -122,7 +123,7 @@ class Game(Scene):
             anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
             anim.frame_index = random.randint(0, 4)
             hitbox = Button(
-                0, 100 * (i - 1) + 40, 128, 80
+                0, 100 * i+ 40, 128, 80
             )  # Offset for removal of king summon
             flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
             self.flames.append(flame)
@@ -244,6 +245,12 @@ class Game(Scene):
             "CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK
         )
         self.start_text = GAME_FONT.render("START", False, WHITE)
+
+        self.drag_me_text = GAME_FONT_SMALL.render("DRAG SOULS", False, WHITE)
+        self.to_board_text = GAME_FONT_SMALL.render("TO BOARD", False, WHITE)
+        self.mana_word_text = GAME_FONT_SMALL.render("MANA", False, WHITE)
+        self.remaining_text = GAME_FONT_SMALL.render("REMAINING", False, WHITE)
+        self.summon_text = GAME_FONT_SMALL.render("TO SUMMON", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -570,13 +577,20 @@ class Game(Scene):
             blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
+                i = i+1
                 surface.blit(flame.animation.get_frame(), (0, 100 * i))
                 surface.blit(
                     self.piece_silhouette[flame.piece_type], (40, 100 * i + 40)
                 )
                 blit_centered_text(surface, flame.summon_text, 80, 100 * i + 70)
 
-            blit_centered_text(surface, self.mana_text, 64, 650)
+            blit_centered_text(surface, self.mana_text, 64, 50)
+            blit_centered_text(surface, self.mana_word_text, 64, 75)
+            blit_centered_text(surface, self.remaining_text, 64, 90)
+
+            blit_centered_text(surface, self.drag_me_text, 68, 650)
+            blit_centered_text(surface, self.to_board_text, 68, 665)
+            blit_centered_text(surface, self.summon_text, 68, 680)
 
         surface.blit(self.transparent_surface, (0, 0))
 
