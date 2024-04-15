@@ -59,6 +59,61 @@ def generate_empty_player_pieces(players: list[Colour]) -> PlayerPieces:
     return {colour: [] for colour in players}
 
 
+def place_king_randomly(
+    board: Board,
+    player_pieces: PlayerPieces,
+    player_colour: Colour,
+    player_regions: dict[Colour, tuple[int, int, int, int]],
+    is_player: bool,
+) -> None:
+    region = player_regions[player_colour]
+    closest = None
+    furthest = None
+    open_squares = []
+    for square, piece in board.items():
+        if piece is not None:
+            continue
+        if (
+            square[0] < region[0]
+            or square[0] >= region[0] + region[2]
+            or square[1] < region[1]
+            or square[1] >= region[1] + region[3]
+        ):
+            continue
+
+        open_squares.append(square)
+        if closest is None or square[1] < closest:
+            closest = square[1]
+        if furthest is None or square[1] > furthest:
+            furthest = square[1]
+
+    # No squares in region to place king or any pieces
+    if closest is None or furthest is None:
+        return
+
+    if is_player:
+        # place king on any square in furthest rank
+        furthest_squares = []
+        for square in open_squares:
+            if square[1] == furthest:
+                furthest_squares.append(square)
+
+        selected_square = random.choice(furthest_squares)
+        board[selected_square] = Piece.KING
+        player_pieces[player_colour].append(selected_square)
+
+    else:
+        # place king on any square in closest rank
+        closest_squares = []
+        for square in open_squares:
+            if square[1] == closest:
+                closest_squares.append(square)
+
+        selected_square = random.choice(closest_squares)
+        board[selected_square] = Piece.KING
+        player_pieces[player_colour].append(selected_square)
+
+
 def place_pieces_randomly(
     board: Board,
     player_pieces: PlayerPieces,

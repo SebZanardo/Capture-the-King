@@ -14,6 +14,7 @@ from config.constants import (
     FACTION_COLOUR_MAP,
     WHITE,
     BLACK,
+    EMPTY_SQUARE,
 )
 from components.chess import (
     Colour,
@@ -28,6 +29,7 @@ from components.boardgeneration import (
     generate_empty_board,
     generate_empty_player_pieces,
     place_pieces_randomly,
+    place_king_randomly,
 )
 from components.animationplayer import AnimationPlayer
 from components.button import Button, blit_centered_text
@@ -38,6 +40,7 @@ from config.assets import (
     SOUL_FLAMES,
     GAME_FONT,
     GAME_FONT_BIG,
+    GAME_FONT_SMALL,
 )
 from components.levels import levels
 from utilities.math import lerp, clamp
@@ -119,9 +122,12 @@ class Game(Scene):
             anim = AnimationPlayer("idle", SOUL_FLAMES[i * 12 : i * 12 + 5], 0.2)
             anim.add_animation("cast", SOUL_FLAMES[i * 12 + 6 : i * 12 + 12], 0.1)
             anim.frame_index = random.randint(0, 4)
-            hitbox = Button(0, 100 * i + 40, 128, 80)
+            hitbox = Button(
+                0, 100 * i+ 40, 128, 80
+            )  # Offset for removal of king summon
             flame = Flame(hitbox, flame_colour_to_piece[colour], anim)
             self.flames.append(flame)
+        self.flames.pop(0)  # Remove king summon
 
         self.board_offset = (
             (WINDOW_WIDTH - self.square_size * self.board_size[0]) // 2,
@@ -169,15 +175,22 @@ class Game(Scene):
             sprite = pygame.transform.scale(sprite, (32, 48))
             self.piece_silhouette[piece] = sprite
 
-        place_pieces_randomly(
+        place_king_randomly(
             self.board,
             self.player_pieces,
-            Colour.WHITE,
+            self.active_players[0],
             self.player_regions,
-            [Piece.KING],
+            True,
         )
 
         for colour, pieces in opponents.items():
+            place_king_randomly(
+                self.board,
+                self.player_pieces,
+                colour,
+                self.player_regions,
+                False,
+            )
             place_pieces_randomly(
                 self.board,
                 self.player_pieces,
@@ -187,7 +200,7 @@ class Game(Scene):
             )
 
         self.start_button = Button(
-            WINDOW_WIDTH - 114, WINDOW_HEIGHT // 2 - 50, 100, 100
+            WINDOW_WIDTH - 128, WINDOW_HEIGHT // 2 - 50, 128, 100
         )
 
         self.turn = 0  # Index in self.active_players array
@@ -212,6 +225,8 @@ class Game(Scene):
 
         self.run_simulation = False
 
+        self.player_made_move = True
+
         self.hovered_flame = None
         self.hovered_square = None
 
@@ -229,7 +244,13 @@ class Game(Scene):
         self.continue_text = GAME_FONT.render(
             "CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK
         )
-        self.start_text = GAME_FONT.render(">", False, WHITE)
+        self.start_text = GAME_FONT.render("START", False, WHITE)
+
+        self.drag_me_text = GAME_FONT_SMALL.render("DRAG SOULS", False, WHITE)
+        self.to_board_text = GAME_FONT_SMALL.render("TO BOARD", False, WHITE)
+        self.mana_word_text = GAME_FONT_SMALL.render("MANA", False, WHITE)
+        self.remaining_text = GAME_FONT_SMALL.render("REMAINING", False, WHITE)
+        self.summon_text = GAME_FONT_SMALL.render("TO SUMMON", False, WHITE)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -250,7 +271,7 @@ class Game(Scene):
             self.finished = True
 
             if self.clicked:
-                if self.outcome == Outcome.DRAW or self.outcome == Outcome.WIN:
+                if self.outcome == Outcome.WIN:
                     globaldata.level += 1
                     globaldata.mana += 20  # HACK: Until capturing gives mana
                     if globaldata.level >= len(levels):
@@ -261,10 +282,10 @@ class Game(Scene):
                         return
                     else:
                         self.scene_manager.switch_scene(Game)
-                elif self.outcome == Outcome.LOSE:
+                elif self.outcome == Outcome.DRAW or self.outcome == Outcome.LOSE:
                     globaldata.level = 0
                     globaldata.mana = globaldata.starting_mana
-                    self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
+                    self.scene_manager.switch_scene(Game)
             return
 
         if self.run_simulation:
@@ -292,16 +313,36 @@ class Game(Scene):
                     else:
                         pass
 
+                    # A player just lost... lol
+                    if self.active_captured_piece == Piece.KING:
+                        # TODO: Play sound effect player death
+                        self.alive_players[self.active_move.capture] = False
+                        self.moves_since_death = 0
+                        self.move_speed = self.starting_speed
+                        self.move_speed_timer = self.move_speed
+
                     self.active_move = None
 
                 # Update turn
                 self.active_player = self.active_players[self.turn]
+
+                # Stalemate (No piece made a move for any player for a turn)
+                if (
+                    self.active_player == self.active_players[0]
+                    and not self.player_made_move
+                ):
+                    self.gameover = True
+
+                if self.active_player == self.active_players[0]:
+                    self.player_made_move = False
 
                 if self.alive_players[self.active_player]:
                     selected_move = pick_random_move(
                         self.board, self.player_pieces, self.active_player
                     )
                     if selected_move:
+                        self.player_made_move = True
+
                         # Set piece to move
                         self.active_move = selected_move
                         self.active_piece = self.board[
@@ -327,14 +368,9 @@ class Game(Scene):
                         )
                         self.move_speed = clamp(self.move_speed, 0, self.starting_speed)
                     else:
-                        # TODO: Play sound effect player death
-
-                        # Slow down game
-                        self.moves_since_death = 0
-                        self.move_speed = self.starting_speed
-                        self.move_speed_timer = self.move_speed
-
-                        self.alive_players[self.active_player] = False
+                        # Can't make move
+                        # self.alive_players[self.active_player] = False
+                        pass
 
                 self.turn += 1
                 self.turn %= len(self.active_players)
@@ -408,6 +444,14 @@ class Game(Scene):
     def render(self, surface: pygame.Surface) -> None:
         self.transparent_surface.fill(self.transparent_colorkey)
         surface.fill(BACKGROUND)
+
+        background_rect = (
+            self.board_offset[0],
+            self.board_offset[1],
+            self.board_size[0] * self.square_size,
+            self.board_size[1] * self.square_size,
+        )
+        pygame.draw.rect(surface, EMPTY_SQUARE, background_rect)
 
         for square, piece in self.board.items():
             colour = LIGHT_SQUARE if (square[0] + square[1]) % 2 == 0 else DARK_SQUARE
@@ -513,6 +557,8 @@ class Game(Scene):
                 surface.blit(piece_sprite, piece_screen_pos)
 
             for colour, region in self.player_regions.items():
+                if colour == self.active_players[0]:
+                    continue
                 screen_rect = (
                     region[0] * self.square_size + self.board_offset[0],
                     region[1] * self.square_size + self.board_offset[1],
@@ -520,24 +566,31 @@ class Game(Scene):
                     region[3] * self.square_size,
                 )
                 colour = FACTION_COLOUR_MAP[colour]
-                colour.a = 120
+                colour.a = 100
                 pygame.draw.rect(
                     self.transparent_surface,
                     colour,
                     screen_rect,
                 )
 
-            self.start_button.render(surface)
+            self.start_button.render(surface, DARK_SQUARE, None)
             blit_centered_text(surface, self.start_text, *self.start_button.center)
 
             for i, flame in enumerate(self.flames):
+                i = i+1
                 surface.blit(flame.animation.get_frame(), (0, 100 * i))
                 surface.blit(
                     self.piece_silhouette[flame.piece_type], (40, 100 * i + 40)
                 )
                 blit_centered_text(surface, flame.summon_text, 80, 100 * i + 70)
 
-            blit_centered_text(surface, self.mana_text, 64, 650)
+            blit_centered_text(surface, self.mana_text, 64, 50)
+            blit_centered_text(surface, self.mana_word_text, 64, 75)
+            blit_centered_text(surface, self.remaining_text, 64, 90)
+
+            blit_centered_text(surface, self.drag_me_text, 68, 650)
+            blit_centered_text(surface, self.to_board_text, 68, 665)
+            blit_centered_text(surface, self.summon_text, 68, 680)
 
         surface.blit(self.transparent_surface, (0, 0))
 
@@ -570,7 +623,7 @@ class Game(Scene):
                 )
                 blit_centered_text(
                     surface,
-                    self.continue_text,
+                    self.restart_text,
                     WINDOW_CENTRE[0],
                     WINDOW_CENTRE[1] + 70,
                 )

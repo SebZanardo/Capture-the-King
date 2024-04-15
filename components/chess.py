@@ -168,6 +168,7 @@ def generate_piece_moves(
             )
 
         case Piece.KING:
+            return []
             return get_set_moves(board, player_pieces, player_colour, x, y, KING_MOVES)
 
 
