@@ -212,6 +212,8 @@ class Game(Scene):
 
         self.mana_text = GAME_FONT.render(f"{globaldata.mana}", False, WHITE)
 
+        self.hovered_square = None
+
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
     ) -> None:
@@ -239,8 +241,10 @@ class Game(Scene):
                     self.hovered_flame.animation.switch_animation("cast")
                 inside = True
 
+        self.hovered_square = None
+
         # Attempt summon of piece
-        if self.released and self.hovered_flame is not None:
+        if self.hovered_flame is not None:
             # Find square we are over
             square = (
                 (mouse_position[0] - self.board_offset[0]) // self.square_size,
@@ -250,18 +254,21 @@ class Game(Scene):
             region = self.player_regions[self.active_players[0]]
             if (
                 square[0] >= region[0]
-                or square[0] < region[0] + region[2]
-                or square[1] >= region[1]
-                or square[1] < region[1] + region[3]
+                and square[0] < region[0] + region[2]
+                and square[1] >= region[1]
+                and square[1] < region[1] + region[3]
             ):
                 # If square not occupied or non-existant
                 if square in self.board and self.board[square] is None:
-                    self.board[square] = self.hovered_flame.piece_type
-                    self.player_pieces[self.active_players[0]].append(square)
-                    globaldata.mana -= self.hovered_flame.summon_cost
-                    self.mana_text = GAME_FONT.render(
-                        f"{globaldata.mana}", False, WHITE
-                    )
+                    self.hovered_square = square
+                    # If mouse released
+                    if self.released:
+                        self.board[square] = self.hovered_flame.piece_type
+                        self.player_pieces[self.active_players[0]].append(square)
+                        globaldata.mana -= self.hovered_flame.summon_cost
+                        self.mana_text = GAME_FONT.render(
+                            f"{globaldata.mana}", False, WHITE
+                        )
 
         if not self.dragging and not inside and self.hovered_flame is not None:
             self.hovered_flame.animation.switch_animation("idle")
@@ -451,6 +458,26 @@ class Game(Scene):
             )
 
         if not self.run_simulation:
+            if self.hovered_square and self.hovered_flame:
+                square_pos = (
+                    self.hovered_square[0] * self.square_size + self.board_offset[0],
+                    self.hovered_square[1] * self.square_size + self.board_offset[1],
+                )
+                pygame.draw.rect(surface, WHITE, (square_pos, self.square_size_tuple))
+
+                piece_screen_pos = (
+                    self.hovered_square[0] * self.square_size
+                    + self.board_offset[0]
+                    + self.piece_offset[0],
+                    self.hovered_square[1] * self.square_size
+                    + self.board_offset[1]
+                    + self.piece_offset[1],
+                )
+                piece_sprite = self.player_piece_sprites[self.active_players[0]][
+                    self.hovered_flame.piece_type.value
+                ]
+                surface.blit(piece_sprite, piece_screen_pos)
+
             for colour, region in self.player_regions.items():
                 screen_rect = (
                     region[0] * self.square_size + self.board_offset[0],
