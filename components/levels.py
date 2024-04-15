@@ -23,7 +23,7 @@ levels = [
         "board": (44, 7, 7),
         "opponents": {
             Colour.RED: [Piece.PAWN] * 3,
-            Colour.YELLOW: [Piece.KNIGHT] * 2 + [Piece.PAWN] * 1,
+            Colour.YELLOW: [Piece.KNIGHT] * 2 + [Piece.PAWN] * 2,
         },
         "mana_awarded": 20,
     },
@@ -48,7 +48,7 @@ levels = [
         "name": "RELENTLESS ROOKS",
         "board": (36, 6, 6),
         "opponents": {
-            Colour.BLUE: [Piece.ROOK] * 3,
+            Colour.BLUE: [Piece.ROOK] * 3 + [Piece.PAWN] * 6,
         },
         "mana_awarded": 20,
     },
@@ -69,15 +69,15 @@ levels = [
             Colour.GREEN: [Piece.BISHOP] * 2 + [Piece.PAWN]*3,
             Colour.BLUE: [Piece.ROOK] * 2 + [Piece.PAWN]*4,
         },
-        "mana_awarded": 20,
+        "mana_awarded": 30,
     },
     {
         "name": "THE ALMIGHTY QUEEN",
         "board": (64, 8, 8),
         "opponents": {
-            Colour.PURPLE: [Piece.QUEEN] * 3 + [Piece.PAWN] * 3,
+            Colour.PURPLE: [Piece.QUEEN] * 3 + [Piece.PAWN] * 9,
         },
-        "mana_awarded": 20,
+        "mana_awarded": 30,
     },
     {
         "name": "THE FINAL CHALLENGE",
@@ -89,7 +89,7 @@ levels = [
             Colour.PURPLE: [Piece.QUEEN] * 2 + [Piece.PAWN] * 3,
             Colour.BLACK: [Piece.KING] * 4 + [Piece.QUEEN] + [Piece.PAWN] * 8,
         },
-        "mana_awarded": 20,
+        "mana_awarded": 40,
     },
     # {
     #     "name": "Black",
