@@ -48,6 +48,7 @@ import scenes.globals as globaldata
 
 # Import the whole module of all scenes you want to switch to
 import scenes.mainmenu
+import scenes.win
 
 
 class Game(Scene):
@@ -60,6 +61,7 @@ class Game(Scene):
 
         # Load current level
         current_level = levels[globaldata.level]
+        self.mana_reward = current_level["mana_awarded"]
         self.name = current_level["name"]
         board = current_level["board"]
         self.squares = board[0]
@@ -291,12 +293,11 @@ class Game(Scene):
             if self.clicked:
                 if self.outcome == Outcome.WIN:
                     globaldata.level += 1
-                    globaldata.mana += 20  # HACK: Until capturing gives mana
+                    globaldata.mana += self.mana_reward
                     if globaldata.level >= len(levels):
                         globaldata.level = 0
                         globaldata.mana = globaldata.starting_mana
-                        # TODO: Transition to win screen here
-                        self.scene_manager.switch_scene(scenes.mainmenu.MainMenu)
+                        self.scene_manager.switch_scene(scenes.win.Win)
                         return
                     else:
                         self.scene_manager.switch_scene(Game)

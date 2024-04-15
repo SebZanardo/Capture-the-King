@@ -9,6 +9,7 @@ levels = [
         "opponents": {
             Colour.RED: [Piece.PAWN] * 3,
         },
+        "mana_awarded" : 20
     },
     {
         "name": "Introducing Knights",
@@ -17,6 +18,7 @@ levels = [
             Colour.YELLOW: [Piece.KNIGHT] * 2 + [Piece.PAWN] * 1,
             Colour.RED: [Piece.PAWN] * 3,
         },
+        "mana_awarded" : 20
     },
     {
         "name": "Bishop Time",
@@ -24,6 +26,7 @@ levels = [
         "opponents": {
             Colour.BLUE: [Piece.BISHOP] * 3 + [Piece.PAWN] * 6,
         },
+        "mana_awarded" : 20
     },
     {
         "name": "Close Quarters Rooks",
