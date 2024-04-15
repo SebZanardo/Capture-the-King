@@ -6,13 +6,14 @@ import pygame
 from utilities.typehints import ActionBuffer, MouseBuffer
 from config.input import InputState, MouseButton, Action
 from baseclasses.scenemanager import Scene, SceneManager
-from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_SIZE
+from config.settings import WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_SIZE, WINDOW_CENTRE
 from config.constants import (
     BACKGROUND,
     LIGHT_SQUARE,
     DARK_SQUARE,
     FACTION_COLOUR_MAP,
     WHITE,
+    BLACK,
 )
 from components.chess import (
     Colour,
@@ -31,7 +32,13 @@ from components.boardgeneration import (
 from components.animationplayer import AnimationPlayer
 from components.button import Button, blit_centered_text
 from components.flame import Flame
-from config.assets import CHESS_PIECES, CHESS_SILHOUETTES, SOUL_FLAMES, GAME_FONT
+from config.assets import (
+    CHESS_PIECES,
+    CHESS_SILHOUETTES,
+    SOUL_FLAMES,
+    GAME_FONT,
+    GAME_FONT_BIG,
+)
 from utilities.math import lerp, clamp
 import scenes.globals as globaldata
 
@@ -209,10 +216,15 @@ class Game(Scene):
         self.run_simulation = False
 
         self.hovered_flame = None
+        self.hovered_square = None
 
         self.mana_text = GAME_FONT.render(f"{globaldata.mana}", False, WHITE)
-
-        self.hovered_square = None
+        self.fight_complete_text = GAME_FONT.render("FIGHT CONCLUDED", False, WHITE, BLACK)
+        self.win_text = GAME_FONT_BIG.render("YOU WIN!", False, WHITE, BLACK)
+        self.draw_text = GAME_FONT_BIG.render("STALEMATE!", False, WHITE, BLACK)
+        self.lose_text = GAME_FONT_BIG.render("YOU LOST!", False, WHITE, BLACK)
+        self.restart_text = GAME_FONT.render("CLICK ANYWHERE TO RESTART", False, WHITE, BLACK)
+        self.continue_text = GAME_FONT.render("CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK)
 
     def handle_input(
         self, action_buffer: ActionBuffer, mouse_buffer: MouseBuffer
@@ -505,3 +517,50 @@ class Game(Scene):
             blit_centered_text(surface, self.mana_text, 64, 650)
 
         surface.blit(self.transparent_surface, (0, 0))
+
+        if self.gameover:
+            blit_centered_text(
+                surface,
+                self.fight_complete_text,
+                WINDOW_CENTRE[0],
+                WINDOW_CENTRE[1] - 80,
+            )
+            if self.outcome == Outcome.WIN:
+                blit_centered_text(
+                    surface,
+                    self.win_text,
+                    WINDOW_CENTRE[0],
+                    WINDOW_CENTRE[1],
+                )
+                blit_centered_text(
+                    surface,
+                    self.continue_text,
+                    WINDOW_CENTRE[0],
+                    WINDOW_CENTRE[1]+70,
+                )
+            elif self.outcome == Outcome.DRAW:
+                blit_centered_text(
+                    surface,
+                    self.draw_text,
+                    WINDOW_CENTRE[0],
+                    WINDOW_CENTRE[1],
+                )
+                blit_centered_text(
+                    surface,
+                    self.continue_text,
+                    WINDOW_CENTRE[0],
+                    WINDOW_CENTRE[1]+70,
+                )
+            elif self.outcome == Outcome.LOSE:
+                blit_centered_text(
+                    surface,
+                    self.lose_text,
+                    WINDOW_CENTRE[0],
+                    WINDOW_CENTRE[1],
+                )
+                blit_centered_text(
+                    surface,
+                    self.restart_text,
+                    WINDOW_CENTRE[0],
+                    WINDOW_CENTRE[1]+70,
+                )
