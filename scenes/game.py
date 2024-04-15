@@ -248,7 +248,7 @@ class Game(Scene):
         self.draw_text = GAME_FONT_BIG.render("STALEMATE!", False, WHITE, BLACK)
         self.lose_text = GAME_FONT_BIG.render("YOU LOST!", False, WHITE, BLACK)
         self.restart_text = GAME_FONT.render(
-            "CLICK ANYWHERE TO RESTART", False, WHITE, BLACK
+            "CLICK ANYWHERE TO RETRY", False, WHITE, BLACK
         )
         self.continue_text = GAME_FONT.render(
             "CLICK ANYWHERE TO CONTINUE", False, WHITE, BLACK
