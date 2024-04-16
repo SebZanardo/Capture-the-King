@@ -29,7 +29,7 @@ class MainMenu(Scene):
         for i, image in enumerate(falling_pieces):
             x = random.randint(0, WINDOW_WIDTH)
             y = random.randint(0, WINDOW_HEIGHT)
-            speed = random.randint(1, 4) * 50
+            speed = random.randint(1, 4)
             # trust
             rotate_speed = random.randint(25, 50) * random.choice((1, -1))
             self.pieces.append(
