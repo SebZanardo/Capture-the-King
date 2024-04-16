@@ -34,6 +34,11 @@ class Core:
             self.check_for_window_events()
             input_buffer = self.get_input()
 
+            if not pygame.mouse.get_focused():
+                pygame.mixer.Channel(0).pause()
+            else:
+                pygame.mixer.Channel(0).unpause()
+
             self.scene_manager.handle_input(input_buffer)
             self.scene_manager.update(dt)
             self.scene_manager.render(window)

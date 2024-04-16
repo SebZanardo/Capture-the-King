@@ -13,7 +13,7 @@ class FallingSprite(pygame.sprite.Sprite):
         self.rotate_speed = rotate_speed
 
     def update(self, dt: float) -> None:
-        self.rect.y += self.speed_y * dt
+        self.rect.y += self.speed_y
 
         # Calculate half width and half height
         half_width = self.image.get_rect().width // 2
