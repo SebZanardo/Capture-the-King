@@ -81,7 +81,7 @@ levels = [
     },
     {
         "name": "THE FINAL CHALLENGE",
-        "board": (150, 20, 10),
+        "board": (185, 20, 10),
         "opponents": {
             Colour.YELLOW: [Piece.KNIGHT] * 3 + [Piece.PAWN] * 3,
             Colour.GREEN: [Piece.BISHOP] * 3 + [Piece.PAWN] * 3,
