@@ -41,6 +41,12 @@ from config.assets import (
     GAME_FONT,
     GAME_FONT_BIG,
     GAME_FONT_SMALL,
+    CAPTURE_SFX,
+    CHECKMATE_SFX,
+    LOST_SFX,
+    STALEMATE_SFX,
+    SUMMON_SFX,
+    WIN_SFX,
 )
 from components.levels import levels
 from utilities.math import lerp, clamp
@@ -295,6 +301,12 @@ class Game(Scene):
         if self.gameover:
             if not self.finished:
                 print(self.outcome)
+                if self.outcome == Outcome.WIN:
+                    pygame.mixer.Channel(2).play(WIN_SFX)
+                elif self.outcome == Outcome.DRAW:
+                    pygame.mixer.Channel(2).play(STALEMATE_SFX)
+                elif self.outcome == Outcome.LOSE:
+                    pygame.mixer.Channel(2).play(LOST_SFX)
             self.finished = True
 
             if self.clicked:
@@ -332,15 +344,15 @@ class Game(Scene):
 
             else:
                 if self.active_move:
-                    # TODO: Play sound effect for move and capture
+                    # Play sound effect for move and capture
                     if self.active_move.capture:
-                        pass
-                    else:
-                        pass
+                        pygame.mixer.Channel(1).play(CAPTURE_SFX)
 
                     # A player just lost... lol
                     if self.active_captured_piece == Piece.KING:
-                        # TODO: Play sound effect player death
+                        # Play sound effect player death
+                        pygame.mixer.Channel(1).play(CHECKMATE_SFX)
+
                         self.alive_players[self.active_move.capture] = False
                         self.moves_since_death = 0
                         self.move_speed = self.starting_speed
@@ -460,6 +472,9 @@ class Game(Scene):
                             self.board[square] = piece_type
                             self.player_pieces[self.active_players[0]].append(square)
                             globaldata.mana -= self.hovered_flame.summon_cost
+
+                            pygame.mixer.Channel(1).play(SUMMON_SFX)
+
                             self.mana_text = GAME_FONT.render(
                                 f"{globaldata.mana}", False, WHITE
                             )

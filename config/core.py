@@ -6,7 +6,7 @@ from utilities.typehints import InputBuffer
 from baseclasses.scenemanager import SceneManager
 from config.settings import FPS, action_mappings
 from config.input import InputState, MouseButton, Action
-from config.assets import window, clock
+from config.assets import window, clock, THEME_SONG
 from scenes.mainmenu import MainMenu  # Initial scene
 
 
@@ -20,6 +20,9 @@ class Core:
 
     def __init__(self) -> None:
         self.scene_manager = SceneManager(MainMenu)
+        pygame.mixer.Channel(0).play(THEME_SONG, -1)
+        pygame.mixer.Channel(1).set_volume(30)
+        pygame.mixer.Channel(2).set_volume(30)
 
     async def run(self) -> None:
         while True:
@@ -96,9 +99,9 @@ class Core:
 
             # Can use these events to pause audio tracks or whatever else you need
             elif event.type == pygame.WINDOWFOCUSLOST:
-                pass
+                pygame.mixer.Channel(0).pause()
             elif event.type == pygame.WINDOWFOCUSGAINED:
-                pass
+                pygame.mixer.Channel(0).unpause()
             elif event.type == pygame.VIDEORESIZE:
                 pass
 
